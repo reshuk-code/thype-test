@@ -26,6 +26,17 @@ export const tagsSchema = z
     ].slice(0, 20),
   );
 
+/** A list of record ids from repeated form inputs, de-duplicated, order kept. */
+const idListSchema = (max: number) =>
+  z
+    .array(z.string().trim().max(64))
+    .default([])
+    .transform((ids) => [...new Set(ids.filter(Boolean))].slice(0, max));
+
+/** Short text that is optional but bounded, so a paste cannot bloat the row. */
+const boundedText = (max: number) =>
+  optionalText.pipe(z.string().max(max, `Keep this under ${max} characters.`).nullable());
+
 /**
  * Input accepted when creating or updating a blog post.
  *
@@ -39,9 +50,17 @@ export const postInputSchema = z.object({
   content: richContentSchema,
   body: z.array(blockInstanceSchema).default([]),
   featuredImage: optionalUrl,
+  featuredImageAlt: boundedText(300),
+  featuredImageCaption: boundedText(300),
+  featuredImageCredit: boundedText(200),
   authorId: z.string().trim().nullable().default(null),
+  authorProfileId: z.string().trim().max(64).nullable().default(null),
   category: optionalText,
   tags: tagsSchema,
+  destinationIds: idListSchema(10),
+  relatedPostIds: idListSchema(6),
+  featured: z.boolean().default(false),
+  showToc: z.boolean().default(true),
   status: contentStatusSchema.default("draft"),
   /** Required when status is "scheduled"; ignored otherwise. */
   publishedAt: z
@@ -65,6 +84,16 @@ export const postInputWithRulesSchema = postInputSchema.superRefine(
         message: "Pick a publication date to schedule this post.",
       });
     }
+
+    // The lead image of an article always carries meaning, so it is never
+    // "decorative" — a screen reader user should hear what the photo shows.
+    if (value.featuredImage && !value.featuredImageAlt) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["featuredImageAlt"],
+        message: "Describe the featured image for readers who cannot see it.",
+      });
+    }
   },
 );
 
@@ -75,4 +104,15 @@ export type PostInputParsed = z.output<typeof postInputSchema>;
 export const postFiltersSchema = z.object({
   category: z.string().trim().default(""),
   tag: z.string().trim().default(""),
+  author: z.string().trim().max(64).default(""),
+  featured: z.enum(["", "yes", "no"]).default(""),
+});
+
+/**
+ * Query-string parameters on public listing pages. Bounded so a crafted URL
+ * cannot ask for page 10^9 or a megabyte search term.
+ */
+export const publicListParamsSchema = z.object({
+  page: z.coerce.number().int().min(1).max(1000).catch(1),
+  q: z.string().trim().max(100).catch(""),
 });

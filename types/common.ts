@@ -16,6 +16,9 @@ export const CONTENT_STATUSES = [
   "draft",
   "published",
   "scheduled",
+  // Retired from the public site but kept out of the trash, so it is neither
+  // mistaken for an unfinished draft nor purged with the deleted records.
+  "archived",
   "trash",
 ] as const;
 

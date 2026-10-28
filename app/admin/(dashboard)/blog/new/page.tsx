@@ -1,22 +1,14 @@
+import { loadPostEditorOptions } from "@/app/admin/(dashboard)/blog/editor-options";
 import { PageHeader } from "@/components/cms/page-header";
 import { PostForm } from "@/components/cms/post-form";
 import { requirePermission } from "@/lib/auth";
 import { hasPermission } from "@/lib/auth/permissions";
-import { posts } from "@/lib/cms/repositories/posts";
-import { settings } from "@/lib/cms/repositories/settings";
-import { users } from "@/lib/cms/repositories/users";
 
 export const metadata = { title: "New post" };
 
 export default async function NewPostPage() {
   const session = await requirePermission("blog.create");
-
-  const [authors, categories, tags, siteUrl] = await Promise.all([
-    users.list({ perPage: 100 }),
-    posts.categories(),
-    posts.tags(),
-    settings.siteUrl(),
-  ]);
+  const options = await loadPostEditorOptions(session.userId);
 
   return (
     <>
@@ -27,10 +19,7 @@ export default async function NewPostPage() {
 
       <PostForm
         post={null}
-        authorOptions={authors.items.map(({ id, name }) => ({ id, name }))}
-        categoryOptions={categories}
-        tagOptions={tags.map((tag) => tag.name)}
-        siteUrl={siteUrl}
+        {...options}
         canPublish={hasPermission({ role: session.role }, "blog.publish")}
       />
     </>

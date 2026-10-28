@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   Inbox,
   LayoutDashboard,
+  MailPlus,
   Link2,
   type LucideIcon,
   // Aliased: a bare `Map` import would shadow the JavaScript Map constructor
@@ -25,6 +26,7 @@ import {
   Settings,
   ShieldCheck,
   Terminal,
+  UserRound,
   Users,
 } from "lucide-react";
 
@@ -127,11 +129,19 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     label: "Content Management",
     items: [
       {
-        label: "Blog",
+        label: "Blog Posts",
         href: "/admin/blog",
         icon: BookOpen,
         module: "blog",
         permission: "blog.read",
+        matchPrefix: true,
+      },
+      {
+        label: "Authors",
+        href: "/admin/authors",
+        icon: UserRound,
+        module: "authors",
+        permission: "authors.read",
         matchPrefix: true,
       },
       {
@@ -222,6 +232,14 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         label: "Enquiries",
         href: "/admin/enquiries",
         icon: Inbox,
+        module: "enquiries",
+        permission: "enquiries.read",
+        matchPrefix: true,
+      },
+      {
+        label: "Newsletter",
+        href: "/admin/subscribers",
+        icon: MailPlus,
         module: "enquiries",
         permission: "enquiries.read",
         matchPrefix: true,

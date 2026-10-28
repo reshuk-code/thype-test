@@ -8,6 +8,7 @@ import {
   toRichDoc,
   toRichListContent,
 } from "@/lib/rich-text";
+import { headingAnchors } from "@/lib/rich-text-anchors";
 import type { RichDoc, RichListContent, RichNode } from "@/types/rich-text";
 
 /**
@@ -51,9 +52,12 @@ function RichDocument({ doc }: { doc: RichDoc }) {
 
   if (!hasContent) return null;
 
+  // Ids from the same helper the table of contents uses, so its links land.
+  const anchors = headingAnchors(doc);
+
   return (
     <div className="space-y-4">
-      {doc.content.map((node, index) => renderNode(node, index))}
+      {doc.content.map((node, index) => renderNode(node, index, anchors.get(index)))}
     </div>
   );
 }
@@ -64,7 +68,7 @@ const HEADING_STYLES: Record<number, string> = {
   4: "text-lg font-semibold",
 };
 
-function renderNode(node: RichNode, key: number): ReactNode {
+function renderNode(node: RichNode, key: number, anchor?: string): ReactNode {
   switch (node.type) {
     case "paragraph":
       return (
@@ -81,9 +85,9 @@ function renderNode(node: RichNode, key: number): ReactNode {
       const className = HEADING_STYLES[level];
       const children = renderChildren(node);
 
-      if (level === 2) return <h2 key={key} className={className}>{children}</h2>;
-      if (level === 3) return <h3 key={key} className={className}>{children}</h3>;
-      return <h4 key={key} className={className}>{children}</h4>;
+      if (level === 2) return <h2 key={key} id={anchor} className={className}>{children}</h2>;
+      if (level === 3) return <h3 key={key} id={anchor} className={className}>{children}</h3>;
+      return <h4 key={key} id={anchor} className={className}>{children}</h4>;
     }
 
     case "bulletList":

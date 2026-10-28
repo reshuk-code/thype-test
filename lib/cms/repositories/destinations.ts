@@ -114,6 +114,25 @@ export const destinations = {
     return this.getPublished({ featured: true, perPage: limit });
   },
 
+  /**
+   * Publicly visible destinations by id, in the order given, in one query.
+   * For the places a story is filed under.
+   */
+  async getPublishedByIds(ids: string[]): Promise<Destination[]> {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (unique.length === 0) return [];
+
+    const store = await collection();
+    const found = await store.findMany({
+      where: [{ field: "id", op: "in", value: unique }],
+      limit: unique.length,
+    });
+    const byId = new Map(
+      found.filter((record) => isPubliclyVisible(record)).map((record) => [record.id, record]),
+    );
+    return unique.flatMap((id) => byId.get(id) ?? []);
+  },
+
   async count(options?: DestinationListOptions): Promise<number> {
     const store = await collection();
     return store.count(buildListQuery(options, SEARCH_FIELDS));

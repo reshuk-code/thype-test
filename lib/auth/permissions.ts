@@ -16,6 +16,7 @@ import type { Permission, PermissionAction, Role, Session } from "@/types/user";
 export const RESOURCES = [
   "pages",
   "blog",
+  "authors",
   "media",
   "destinations",
   "regions",
@@ -51,6 +52,7 @@ const ALL_ACTIONS: PermissionAction[] = [
 const CONTENT_RESOURCES: Resource[] = [
   "pages",
   "blog",
+  "authors",
   "media",
   "destinations",
   "regions",

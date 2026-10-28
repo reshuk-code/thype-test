@@ -13,6 +13,7 @@ const STATUS_LABELS: Record<string, string> = {
   published: "Published",
   draft: "Draft",
   scheduled: "Scheduled",
+  archived: "Archived",
   trash: "Trash",
 };
 

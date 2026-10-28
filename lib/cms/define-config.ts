@@ -18,6 +18,7 @@ import {
 export const CMS_MODULES = [
   "pages",
   "blog",
+  "authors",
   "media",
   "destinations",
   "regions",
@@ -95,6 +96,7 @@ export type CmsConfig = z.output<typeof cmsConfigSchema>;
 export const DEFAULT_MODULES: Record<CmsModuleKey, boolean> = {
   pages: true,
   blog: true,
+  authors: true,
   media: true,
   destinations: true,
   regions: true,

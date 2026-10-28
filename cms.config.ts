@@ -11,7 +11,7 @@ import { defineCmsConfig } from "@/lib/cms/define-config";
  * here at runtime, so staging and production can differ without a code change.
  */
 export default defineCmsConfig({
-  siteName: "Aviva Travel Starter",
+  siteName: "Thype",
   siteUrl: "http://localhost:3000",
 
   // "local" needs no credentials and stores JSON under .cms-data/.
@@ -22,11 +22,15 @@ export default defineCmsConfig({
   modules: {
     pages: true,
     blog: true,
+    authors: true,
     media: true,
     destinations: true,
-    tours: true,
-    activities: true,
-    testimonials: true,
+    // Thype is a publication, not an operator: the selling modules stay in the
+    // codebase but off, so the admin shows only what an editor uses.
+    regions: false,
+    tours: false,
+    activities: false,
+    testimonials: false,
     // Off for this client. The public /faqs route reads the SDK directly and
     // is not module-gated, so switch that off in the frontend if it should go
     // too.

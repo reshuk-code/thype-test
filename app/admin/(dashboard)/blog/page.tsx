@@ -1,4 +1,4 @@
-import { BookOpen, PenLine } from "lucide-react";
+import { BookOpen, PenLine, Star } from "lucide-react";
 import Link from "next/link";
 
 import { BlogFilters } from "@/app/admin/(dashboard)/blog/blog-filters";
@@ -19,12 +19,13 @@ import {
 } from "@/components/ui/table";
 import { requirePermission } from "@/lib/auth";
 import { hasPermission } from "@/lib/auth/permissions";
+import { authors } from "@/lib/cms/repositories/authors";
 import { posts } from "@/lib/cms/repositories/posts";
 import { formatRelative } from "@/lib/utils";
 import { listOptionsSchema } from "@/schemas/common";
 import { postFiltersSchema } from "@/schemas/post";
 
-export const metadata = { title: "Blog" };
+export const metadata = { title: "Blog Posts" };
 
 export default async function BlogListPage({
   searchParams,
@@ -46,12 +47,27 @@ export default async function BlogListPage({
   const filters = postFiltersSchema.parse({
     category: params.category,
     tag: params.tag,
+    author: params.author,
+    featured: params.featured,
   });
 
-  const [result, categories, tags] = await Promise.all([
-    posts.list({ ...options, ...filters }),
+  // Sort keys are allow-listed: the value reaches the adapter as a field name.
+  const sort = ["updatedAt", "publishedAt", "createdAt"].includes(options.sort)
+    ? options.sort
+    : "updatedAt";
+
+  const [result, categories, tags, authorOptions] = await Promise.all([
+    posts.list({
+      ...options,
+      sort,
+      category: filters.category,
+      tag: filters.tag,
+      authorProfileId: filters.author || undefined,
+      featured: filters.featured === "" ? undefined : filters.featured === "yes",
+    }),
     posts.categories(),
     posts.tags(),
+    authors.options(),
   ]);
 
   const canCreate = hasPermission({ role: session.role }, "blog.create");
@@ -63,13 +79,15 @@ export default async function BlogListPage({
     Boolean(options.search) ||
     options.status !== "any" ||
     Boolean(filters.category) ||
-    Boolean(filters.tag);
+    Boolean(filters.tag) ||
+    Boolean(filters.author) ||
+    filters.featured !== "";
 
   return (
     <>
       <PageHeader
-        title="Blog"
-        description="Posts, with categories and tags. Your frontend decides which route serves them."
+        title="Blog Posts"
+        description="Stories, with categories, tags, authors and destinations."
         actions={
           canCreate ? (
             <Button asChild size="sm">
@@ -83,7 +101,7 @@ export default async function BlogListPage({
       />
 
       <Card>
-        <BlogFilters categories={categories} tags={tags} />
+        <BlogFilters categories={categories} tags={tags} authors={authorOptions} />
 
         {result.items.length === 0 ? (
           <EmptyState
@@ -91,7 +109,7 @@ export default async function BlogListPage({
             title={filtered ? "No posts match those filters" : "No posts yet"}
             description={
               filtered
-                ? "Try a different search term, or clear the status, category and tag filters."
+                ? "Try a different search term, or clear the filters."
                 : "Fetch published posts with cms.posts.getPublished() and render them however the site needs."
             }
             action={
@@ -129,6 +147,12 @@ export default async function BlogListPage({
                     ) : (
                       <span className="font-medium">{post.title}</span>
                     )}
+                    {post.featured ? (
+                      <Star
+                        className="ml-1.5 inline size-3.5 fill-current align-[-2px] text-amber-500"
+                        aria-label="Featured"
+                      />
+                    ) : null}
                     <span className="mt-0.5 block text-xs text-muted-foreground">
                       <code>{post.slug}</code>
                       {post.readingMinutes
@@ -184,6 +208,9 @@ export default async function BlogListPage({
             status: options.status === "any" ? undefined : options.status,
             category: filters.category || undefined,
             tag: filters.tag || undefined,
+            author: filters.author || undefined,
+            featured: filters.featured || undefined,
+            sort: sort === "updatedAt" ? undefined : sort,
           }}
         />
       </Card>

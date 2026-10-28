@@ -12,6 +12,7 @@ const STATUS_LABELS: Record<string, string> = {
   published: "Published",
   draft: "Draft",
   scheduled: "Scheduled",
+  archived: "Archived",
   trash: "Trash",
 };
 
@@ -24,9 +25,11 @@ const STATUS_LABELS: Record<string, string> = {
 export function BlogFilters({
   categories,
   tags,
+  authors,
 }: {
   categories: string[];
   tags: { name: string; count: number }[];
+  authors: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -114,6 +117,44 @@ export function BlogFilters({
             {tag.name} ({tag.count})
           </option>
         ))}
+      </Select>
+
+      {authors.length > 0 ? (
+        <Select
+          value={searchParams.get("author") ?? ""}
+          onChange={(event) => setParam("author", event.target.value)}
+          aria-label="Filter by author"
+          className="w-40"
+        >
+          <option value="">All authors</option>
+          {authors.map((author) => (
+            <option key={author.id} value={author.id}>
+              {author.name}
+            </option>
+          ))}
+        </Select>
+      ) : null}
+
+      <Select
+        value={searchParams.get("featured") ?? ""}
+        onChange={(event) => setParam("featured", event.target.value)}
+        aria-label="Filter by featured"
+        className="w-36"
+      >
+        <option value="">Any post</option>
+        <option value="yes">Featured</option>
+        <option value="no">Not featured</option>
+      </Select>
+
+      <Select
+        value={searchParams.get("sort") ?? "updatedAt"}
+        onChange={(event) => setParam("sort", event.target.value)}
+        aria-label="Sort by"
+        className="w-44"
+      >
+        <option value="updatedAt">Recently updated</option>
+        <option value="publishedAt">Publication date</option>
+        <option value="createdAt">Recently created</option>
       </Select>
     </div>
   );

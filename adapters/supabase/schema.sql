@@ -19,9 +19,9 @@ do $$
 declare
   collection text;
   collections text[] := array[
-    'pages', 'posts', 'destinations', 'regions', 'tours', 'activities',
+    'pages', 'posts', 'authors', 'destinations', 'regions', 'tours', 'activities',
     'testimonials', 'faqs', 'media', 'menus', 'redirects',
-    'users', 'enquiries', 'activity_log'
+    'users', 'enquiries', 'subscribers', 'activity_log'
   ];
 begin
   foreach collection in array collections loop
@@ -66,6 +66,10 @@ create table if not exists public.cms_kv (
 create unique index if not exists cms_users_email_key
   on public.cms_users ((data->>'email'));
 
+-- One row per newsletter address; the repository relies on this under races.
+create unique index if not exists cms_subscribers_email_key
+  on public.cms_subscribers ((data->>'email'));
+
 -- Redirects are looked up by source path on every unmatched request.
 create unique index if not exists cms_redirects_source_key
   on public.cms_redirects ((data->>'source'));
@@ -85,9 +89,9 @@ do $$
 declare
   collection text;
   collections text[] := array[
-    'pages', 'posts', 'destinations', 'regions', 'tours', 'activities',
+    'pages', 'posts', 'authors', 'destinations', 'regions', 'tours', 'activities',
     'testimonials', 'faqs', 'media', 'menus', 'redirects',
-    'users', 'enquiries', 'activity_log', 'kv'
+    'users', 'enquiries', 'subscribers', 'activity_log', 'kv'
   ];
 begin
   foreach collection in array collections loop

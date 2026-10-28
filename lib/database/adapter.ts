@@ -24,6 +24,7 @@ import type {
 export const COLLECTIONS = [
   "pages",
   "posts",
+  "authors",
   "destinations",
   "regions",
   "tours",
@@ -35,6 +36,7 @@ export const COLLECTIONS = [
   "redirects",
   "users",
   "enquiries",
+  "subscribers",
   "activity_log",
 ] as const;
 

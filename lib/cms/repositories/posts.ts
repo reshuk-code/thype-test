@@ -1,13 +1,17 @@
 import "server-only";
 
-import { ConflictError, NotFoundError } from "@/lib/cms/errors";
+import { cache } from "react";
+
+import { pickRelated } from "@/lib/blog/related";
+import { findTermBySlug } from "@/lib/blog/taxonomy";
+import { ConflictError, NotFoundError, ValidationError } from "@/lib/cms/errors";
 import { getDatabase } from "@/lib/database";
 import { richDocToPlainText, toRichDoc } from "@/lib/rich-text";
 import { applyFilters, applySort, paginate } from "@/lib/database/query";
 import { slugify } from "@/schemas/common";
 import type { PostInputParsed } from "@/schemas/post";
 import type { FilterCondition, ListOptions, Paginated } from "@/types/common";
-import type { Post } from "@/types/content";
+import type { Author, Destination, Post } from "@/types/content";
 
 import {
   buildListQuery,
@@ -32,7 +36,50 @@ async function collection() {
 export interface PostListOptions extends ListOptions {
   category?: string;
   tag?: string;
+  /** Admin filter on the credited profile (`authorProfileId`). */
+  authorProfileId?: string;
+  featured?: boolean;
 }
+
+/** Filters for the public listing pages. All optional, all ANDed. */
+export interface PublicPostQuery {
+  category?: string;
+  tag?: string;
+  destinationId?: string;
+  authorProfileId?: string;
+  featured?: boolean;
+  /** Case-insensitive match on title, excerpt, category and tags. */
+  search?: string;
+  page?: number;
+  perPage?: number;
+}
+
+/** Hard ceiling on a public page size; listing pages ask for far fewer. */
+const MAX_PUBLIC_PER_PAGE = 48;
+
+/**
+ * Every publicly visible post, newest first, fetched once per request.
+ *
+ * The homepage alone asks for a lead story, latest posts, a category strip and
+ * related reading; a query each would be a handful of round trips that all
+ * read the same rows. `cache` dedupes them within one render. Capped like the
+ * facet scan: a publication large enough to hit it needs real indexes and
+ * server-side filtering, which is the Phase 4 note on `scan()` below.
+ *
+ * The adapter contract has no projection, so these rows carry their full
+ * content. At a few hundred posts that is a few megabytes per uncached render,
+ * and public routes are statically cached with revalidation, so it is paid
+ * once per publish rather than once per visitor.
+ */
+const publishedIndex = cache(async (): Promise<Post[]> => {
+  const store = await collection();
+  const candidates = await store.findMany({
+    where: [PUBLIC_STATUS_FILTER],
+    sort: [{ field: "publishedAt", direction: "desc" }],
+    limit: FACET_SCAN_LIMIT,
+  });
+  return candidates.filter((post) => isPubliclyVisible(post));
+});
 
 /** A post write also records who gets the byline. */
 export interface PostWriteContext extends WriteContext {
@@ -65,6 +112,12 @@ export const posts = {
     const where: FilterCondition[] = [...(query.where ?? [])];
     if (options?.category) {
       where.push({ field: "category", op: "eq", value: options.category });
+    }
+    if (options?.authorProfileId) {
+      where.push({ field: "authorProfileId", op: "eq", value: options.authorProfileId });
+    }
+    if (options?.featured !== undefined) {
+      where.push({ field: "featured", op: "eq", value: options.featured });
     }
 
     const spec = { ...query, where: where.length ? where : undefined };
@@ -137,9 +190,104 @@ export const posts = {
     return options?.perPage ? visible.slice(0, options.perPage) : visible;
   },
 
+  /**
+   * One page of published posts for a public listing, with the total needed
+   * to render a paginator. Runs over the per-request index above.
+   */
+  async getPublishedPage(query: PublicPostQuery = {}): Promise<Paginated<Post>> {
+    const perPage = Math.min(MAX_PUBLIC_PER_PAGE, Math.max(1, query.perPage ?? 12));
+    const matching = filterPublic(await publishedIndex(), query);
+
+    const totalPages = Math.max(1, Math.ceil(matching.length / perPage));
+    const page = Math.min(Math.max(1, query.page ?? 1), totalPages);
+    const start = (page - 1) * perPage;
+
+    return {
+      items: matching.slice(start, start + perPage),
+      total: matching.length,
+      page,
+      perPage,
+      totalPages,
+    };
+  },
+
+  /** Published posts flagged as featured, newest first. */
+  async getFeatured(limit = 3): Promise<Post[]> {
+    return filterPublic(await publishedIndex(), { featured: true }).slice(0, limit);
+  },
+
+  /** Published posts by id, in the order given. Unknown or hidden ids drop out. */
+  async getPublishedByIds(ids: string[]): Promise<Post[]> {
+    if (ids.length === 0) return [];
+    const byId = new Map((await publishedIndex()).map((post) => [post.id, post]));
+    return ids.flatMap((id) => byId.get(id) ?? []);
+  },
+
+  /** What to read after `post`: hand-picked first, then the closest matches. */
+  async getRelated(post: Post, limit = 3): Promise<Post[]> {
+    return pickRelated(
+      { ...post, tags: post.tags ?? [] },
+      (await publishedIndex()).map((candidate) => ({
+        ...candidate,
+        tags: candidate.tags ?? [],
+      })),
+      post.relatedPostIds ?? [],
+      limit,
+    );
+  },
+
+  /**
+   * Categories with at least one published post, and how many.
+   *
+   * Distinct from `categories()`, which the admin uses and which includes
+   * drafts: a category that exists only on an unpublished post must not
+   * appear in public navigation, or the site announces a story before it runs.
+   */
+  async publishedCategories(): Promise<{ name: string; count: number }[]> {
+    return countTerms(
+      (await publishedIndex()).map((post) => (post.category ? [post.category] : [])),
+    );
+  },
+
+  /** Tags with at least one published post, most used first. */
+  async publishedTags(): Promise<{ name: string; count: number }[]> {
+    return countTerms((await publishedIndex()).map((post) => post.tags ?? []));
+  },
+
+  /** Resolves a category URL slug to the name posts carry, or null. */
+  async categoryBySlug(slug: string): Promise<string | null> {
+    const names = (await this.publishedCategories()).map((term) => term.name);
+    return findTermBySlug(names, slug);
+  },
+
+  /** Resolves a tag URL slug to the tag posts carry, or null. */
+  async tagBySlug(slug: string): Promise<string | null> {
+    const names = (await this.publishedTags()).map((term) => term.name);
+    return findTermBySlug(names, slug);
+  },
+
+  /** Published post counts per destination id, for destination listings. */
+  async countByDestination(): Promise<Map<string, number>> {
+    const counts = new Map<string, number>();
+    for (const post of await publishedIndex()) {
+      for (const id of post.destinationIds ?? []) {
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+      }
+    }
+    return counts;
+  },
+
   async count(options?: PostListOptions): Promise<number> {
     const store = await collection();
     return store.count(buildListQuery(options, SEARCH_FIELDS));
+  },
+
+  /** Every post not in the trash, newest first, for pickers in the admin. */
+  async options(): Promise<{ id: string; title: string; status: Post["status"] }[]> {
+    const all = await scan();
+    return all
+      .sort((a, b) => (b.publishedAt ?? b.updatedAt).localeCompare(a.publishedAt ?? a.updatedAt))
+      .map(({ id, title, status }) => ({ id, title, status }));
   },
 
   /** Categories in use, for the filter dropdown and the editor's datalist. */
@@ -174,6 +322,7 @@ export const posts = {
 
     return store.create({
       ...fields(input),
+      ...(await checkedReferences(input, null)),
       publishedAt: resolvePublication(input.status, input.publishedAt, null),
       updatedBy: ctx.userId,
       authorId: input.authorId ?? ctx.userId,
@@ -194,6 +343,7 @@ export const posts = {
 
     const updated = await store.update(id, {
       ...fields(input),
+      ...(await checkedReferences(input, id)),
       publishedAt: resolvePublication(
         input.status,
         input.publishedAt,
@@ -251,6 +401,8 @@ export const posts = {
       slug: await findFreeSlug(source.slug),
       status: "draft",
       publishedAt: null,
+      // A copy is a starting point, not a second lead story.
+      featured: false,
       updatedBy: ctx.userId,
     } as Omit<Post, "id" | "createdAt" | "updatedAt"> & { id?: string });
   },
@@ -265,11 +417,100 @@ function fields(input: PostInputParsed) {
     content: input.content,
     body: input.body,
     featuredImage: input.featuredImage,
+    featuredImageAlt: input.featuredImageAlt,
+    featuredImageCaption: input.featuredImageCaption,
+    featuredImageCredit: input.featuredImageCredit,
     category: input.category,
     tags: input.tags,
+    featured: input.featured,
+    showToc: input.showToc,
     status: input.status,
     readingMinutes: readingMinutes(input.content),
     seo: input.seo,
+  };
+}
+
+/** Applies the public listing filters to an already-visible set of posts. */
+function filterPublic(all: Post[], query: PublicPostQuery): Post[] {
+  const term = query.search?.trim().toLowerCase();
+
+  return all.filter((post) => {
+    if (query.category && post.category !== query.category) return false;
+    if (query.tag && !(post.tags ?? []).includes(query.tag)) return false;
+    if (query.featured !== undefined && Boolean(post.featured) !== query.featured) {
+      return false;
+    }
+    if (query.authorProfileId && post.authorProfileId !== query.authorProfileId) {
+      return false;
+    }
+    if (query.destinationId && !(post.destinationIds ?? []).includes(query.destinationId)) {
+      return false;
+    }
+    if (term) {
+      const haystack = [post.title, post.excerpt, post.category, ...(post.tags ?? [])]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(term)) return false;
+    }
+    return true;
+  });
+}
+
+function countTerms(perPost: string[][]): { name: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const terms of perPost) {
+    for (const term of new Set(terms)) counts.set(term, (counts.get(term) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+/**
+ * Validates the ids a post points at, and keeps only the ones that resolve.
+ *
+ * A byline must name a real profile — a typo there would publish a story
+ * credited to nobody — so an unknown author is an error. Destinations and
+ * related posts are lists an editor curates over time; one that has since
+ * been deleted is dropped quietly rather than blocking an unrelated save.
+ */
+async function checkedReferences(
+  input: PostInputParsed,
+  selfId: string | null,
+): Promise<Pick<Post, "authorProfileId" | "destinationIds" | "relatedPostIds">> {
+  const db = await getDatabase();
+
+  if (input.authorProfileId) {
+    const author = await db
+      .collection<Author>("authors")
+      .findById(input.authorProfileId);
+    if (!author || author.status === "trash") {
+      throw new ValidationError("That author profile no longer exists.", {
+        authorProfileId: ["Pick an existing author profile."],
+      });
+    }
+  }
+
+  const existingIds = async (name: "destinations" | "posts", ids: string[]) => {
+    if (ids.length === 0) return [];
+    const found = await db.collection<Destination | Post>(name).findMany({
+      where: [{ field: "id", op: "in", value: ids }],
+      limit: ids.length,
+    });
+    const live = new Set(
+      found.filter((record) => record.status !== "trash").map((record) => record.id),
+    );
+    return ids.filter((id) => live.has(id));
+  };
+
+  return {
+    authorProfileId: input.authorProfileId,
+    destinationIds: await existingIds("destinations", input.destinationIds),
+    relatedPostIds: await existingIds(
+      "posts",
+      input.relatedPostIds.filter((id) => id !== selfId),
+    ),
   };
 }
 

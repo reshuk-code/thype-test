@@ -115,4 +115,48 @@ export const redirects = {
   async delete(id: string): Promise<boolean> {
     return (await collection()).delete(id);
   },
+
+  /**
+   * Content that lived at `from` now lives at `to`: keep old links working.
+   *
+   * Three steps, in an order that matters:
+   * 1. A rule *from* the new address is dropped. Content there wins anyway,
+   *    and left in place it would become a loop the moment step 2 ran on a
+   *    record renamed back to a slug it once had.
+   * 2. Rules that pointed at the old address are retargeted, so a twice-moved
+   *    post costs a visitor one hop rather than a chain.
+   * 3. `from` → `to` is created, or an existing rule from `from` updated.
+   *
+   * The caller decides the paths: the CMS stores bare slugs and does not know
+   * whether a post lives at /blog/x or /stories/x.
+   */
+  async recordMove(from: string, to: string): Promise<void> {
+    const source = normalisePath(from);
+    const destination = normalisePath(to);
+    if (source === destination) return;
+
+    const store = await collection();
+
+    const fromNewAddress = await store.findOne({
+      where: [{ field: "source", op: "eq", value: destination }],
+    });
+    if (fromNewAddress) await store.delete(fromNewAddress.id);
+
+    const pointingAtOld = await store.findMany({
+      where: [{ field: "destination", op: "eq", value: source }],
+    });
+    for (const rule of pointingAtOld) {
+      if (rule.source === destination) continue;
+      await store.update(rule.id, { destination });
+    }
+
+    const existing = await store.findOne({
+      where: [{ field: "source", op: "eq", value: source }],
+    });
+    if (existing) {
+      await store.update(existing.id, { destination, permanent: true, enabled: true });
+    } else {
+      await store.create({ source, destination, permanent: true, enabled: true });
+    }
+  },
 };

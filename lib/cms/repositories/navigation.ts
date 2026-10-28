@@ -6,6 +6,8 @@ import type { MenuInput } from "@/schemas/navigation";
 import type { Menu, MenuItem, ResolvedMenuItem } from "@/types/navigation";
 import type { CmsPage } from "@/types/page";
 
+import { isPubliclyVisible } from "./base";
+
 async function collection() {
   return (await getDatabase()).collection<Menu>("menus");
 }
@@ -120,8 +122,9 @@ function resolveItems(
     switch (item.target) {
       case "page": {
         const page = item.pageId ? pagesById.get(item.pageId) : undefined;
-        // Drop links to pages that were deleted or are not public.
-        if (!page || page.status === "trash" || page.status === "draft") continue;
+        // Drop links to pages that were deleted or are not public — including
+        // archived pages and scheduled ones whose time has not come yet.
+        if (!page || !isPubliclyVisible(page)) continue;
         href = page.slug;
         break;
       }

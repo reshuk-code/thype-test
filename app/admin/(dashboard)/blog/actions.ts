@@ -13,8 +13,12 @@ import {
 } from "@/lib/actions/result";
 import { requirePermission } from "@/lib/auth";
 import { activity } from "@/lib/cms/repositories/activity";
+import { authors } from "@/lib/cms/repositories/authors";
+import { isPubliclyVisible } from "@/lib/cms/repositories/base";
 import { posts } from "@/lib/cms/repositories/posts";
+import { redirects } from "@/lib/cms/repositories/redirects";
 import { users } from "@/lib/cms/repositories/users";
+import { BLOG_BASE_PATH } from "@/config/site-paths";
 import { RICH_TEXT_BLOCK } from "@/lib/cms/blocks";
 import { postInputWithRulesSchema } from "@/schemas/post";
 import type { ContentStatus } from "@/types/common";
@@ -41,9 +45,17 @@ function parseFormData(formData: FormData) {
       ? [{ id: blockId, type: RICH_TEXT_BLOCK, props: { content } }]
       : [],
     featuredImage: formString(formData.get("featuredImage")),
+    featuredImageAlt: formString(formData.get("featuredImageAlt")),
+    featuredImageCaption: formString(formData.get("featuredImageCaption")),
+    featuredImageCredit: formString(formData.get("featuredImageCredit")),
     authorId: formString(formData.get("authorId")) || null,
+    authorProfileId: formString(formData.get("authorProfileId")) || null,
     category: formString(formData.get("category")),
     tags: formString(formData.get("tags")),
+    destinationIds: formData.getAll("destinationIds").map(String),
+    relatedPostIds: formData.getAll("relatedPostIds").map(String),
+    featured: formBoolean(formData.get("featured")),
+    showToc: formBoolean(formData.get("showToc")),
     status: formString(formData.get("status")),
     publishedAt: formString(formData.get("publishedAt")) || null,
     seo: {
@@ -81,11 +93,22 @@ export async function savePostAction(
       await requirePermission("blog.publish");
     }
 
-    // The byline is captured at write time so it survives the author's account
-    // being deleted, the way the activity log captures entity titles.
+    // The byline is captured at write time so it survives the profile or
+    // account being deleted, the way the activity log captures entity titles.
+    // A public author profile wins; the account name is the fallback for
+    // posts written before profiles existed.
     const authorId = parsed.data.authorId ?? session.userId;
-    const author = authorId === session.userId ? null : await users.get(authorId);
-    const authorName = author?.name ?? (authorId === session.userId ? session.name : null);
+    const profile = parsed.data.authorProfileId
+      ? await authors.get(parsed.data.authorProfileId)
+      : null;
+    const account =
+      profile || authorId === session.userId ? null : await users.get(authorId);
+    const authorName =
+      profile?.name ??
+      account?.name ??
+      (authorId === session.userId ? session.name : null);
+
+    const before = isNew ? null : await posts.get(id);
 
     const post = isNew
       ? await posts.create(
@@ -97,6 +120,17 @@ export async function savePostAction(
           { ...parsed.data, authorId },
           { userId: session.userId, authorName },
         );
+
+    // A slug change on a post that has been public breaks every link already
+    // shared. Only this layer knows posts live under BLOG_BASE_PATH, so the
+    // redirect is recorded here rather than in the repository.
+    if (before && before.slug !== post.slug && isPubliclyVisible(before)) {
+      await redirects.recordMove(
+        `${BLOG_BASE_PATH}/${before.slug}`,
+        `${BLOG_BASE_PATH}/${post.slug}`,
+      );
+      revalidatePath("/admin/redirects");
+    }
 
     await activity.record({
       action: isNew ? "created" : "updated",

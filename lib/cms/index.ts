@@ -2,6 +2,7 @@ import "server-only";
 
 import { activities } from "./repositories/activities";
 import { activity } from "./repositories/activity";
+import { authors } from "./repositories/authors";
 import { destinations } from "./repositories/destinations";
 import { enquiries } from "./repositories/enquiries";
 import { faqs } from "./repositories/faqs";
@@ -46,6 +47,7 @@ import { seo } from "./seo";
 export const cms = {
   pages,
   posts,
+  authors,
   destinations,
   regions,
   tours,

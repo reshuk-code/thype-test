@@ -84,13 +84,76 @@ export interface Post extends ContentRecord {
   content: string;
   body: PageBody;
   featuredImage: string | null;
+  /*
+   * Alt text, caption and credit belong to this use of the image, not to the
+   * file: the same photograph can need a different description beside a
+   * different story. Optional on read because posts written before these
+   * fields existed do not carry them.
+   */
+  featuredImageAlt?: string | null;
+  featuredImageCaption?: string | null;
+  featuredImageCredit?: string | null;
+  /** The CMS account that wrote the post. Private: never rendered publicly. */
   authorId: ID | null;
+  /** Byline captured at write time, so it survives the profile being deleted. */
   authorName: string | null;
+  /** The public profile credited on the post — an `Author`, not a user. */
+  authorProfileId?: ID | null;
   category: string | null;
   tags: string[];
+  /** Destinations this story is about, in the order the editor listed them. */
+  destinationIds?: ID[];
+  /** Hand-picked "read next". Topped up automatically when short. */
+  relatedPostIds?: ID[];
+  /** Eligible for featured slots: the homepage lead, featured collections. */
+  featured?: boolean;
+  /** Render a table of contents built from the article's headings. */
+  showToc?: boolean;
   readingMinutes: number | null;
   seo: SeoMeta;
 }
+
+/* ---------------------------------------------------------------- authors */
+
+/** Networks an author profile can link to. Every one is optional. */
+export const AUTHOR_LINK_KEYS = [
+  "website",
+  "instagram",
+  "x",
+  "facebook",
+  "youtube",
+  "tiktok",
+  "linkedin",
+] as const;
+
+export type AuthorLinkKey = (typeof AUTHOR_LINK_KEYS)[number];
+
+/**
+ * A public byline: the person a story is credited to.
+ *
+ * Deliberately separate from `CmsUser`. An account holds an email, a role and
+ * a password hash; a byline holds a bio and a portrait. Guest writers need a
+ * byline and no account, and an account holder may not want a public profile,
+ * so neither can be derived from the other.
+ */
+export interface Author extends ContentRecord {
+  name: string;
+  slug: string;
+  /** Shown under the name, e.g. "Contributing editor". */
+  jobTitle: string | null;
+  bio: string | null;
+  avatar: string | null;
+  links: Partial<Record<AuthorLinkKey, string>>;
+  /**
+   * The CMS account this profile belongs to, if any. Lets the post editor
+   * default to your own byline. Private: stripped by `toPublicAuthor()`.
+   */
+  userId: ID | null;
+  seo: SeoMeta;
+}
+
+/** What the public site may see of an author. */
+export type PublicAuthor = Omit<Author, "userId" | "updatedBy">;
 
 /* --------------------------------------------------------------- regions */
 
@@ -316,6 +379,23 @@ export interface Faq extends ContentRecord {
   answer: string;
   category: string | null;
   order: number;
+}
+
+/* ------------------------------------------------------------ newsletter */
+
+/**
+ * A newsletter signup, held until the client picks an email provider.
+ *
+ * Deliberately minimal: an address, where it came from, and when consent was
+ * given. No IP address or user agent — nothing is kept that the export to a
+ * provider would not need.
+ */
+export interface Subscriber extends BaseRecord {
+  email: string;
+  /** Which form, e.g. "footer". */
+  source: string | null;
+  /** When the visitor submitted the form: the consent record. */
+  consentedAt: string;
 }
 
 /* -------------------------------------------------------------- bookings */

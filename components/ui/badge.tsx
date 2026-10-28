@@ -36,6 +36,7 @@ const STATUS_TONE: Record<ContentStatus, VariantProps<typeof badgeVariants>["ton
   published: "success",
   draft: "neutral",
   scheduled: "info",
+  archived: "neutral",
   trash: "danger",
 };
 
@@ -43,6 +44,7 @@ const STATUS_LABEL: Record<ContentStatus, string> = {
   published: "Published",
   draft: "Draft",
   scheduled: "Scheduled",
+  archived: "Archived",
   trash: "Trash",
 };
 
