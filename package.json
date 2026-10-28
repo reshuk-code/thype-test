@@ -9,11 +9,13 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "node --conditions=react-server --experimental-transform-types --no-warnings --import ./tests/register.mjs --test \"tests/**/*.test.ts\"",
     "check": "npm run typecheck && npm run lint && npm run cms:routes",
     "cms:routes": "node scripts/scan-routes.mjs",
     "cms:secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     "cms:reset": "node scripts/reset-local-data.mjs",
     "cms:seed": "node scripts/seed-demo-content.mjs",
+    "cms:seed:thype": "node scripts/seed-thype.mjs",
     "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
