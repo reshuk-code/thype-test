@@ -93,8 +93,25 @@ export const headerInputSchema = z
         href: optionalUrl,
       })
       .prefault({}),
+    promo: z
+      .object({
+        image: optionalUrl,
+        alt: optionalText,
+        href: optionalUrl,
+      })
+      .prefault({}),
   })
   .superRefine((value, ctx) => {
+    // A banner's message is painted into the image, so without alt text a
+    // screen reader user gets a link that says nothing.
+    if (value.promo.image && !value.promo.alt) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["promo", "alt"],
+        message: "Write out what the banner says.",
+      });
+    }
+
     if (value.announcement.enabled && !value.announcement.text) {
       ctx.addIssue({
         code: "custom",
@@ -148,6 +165,29 @@ export const footerInputSchema = z.object({
   showContact: z.coerce.boolean().default(true),
   copyright: optionalText,
   legalNote: optionalText,
+  newsletter: z
+    .object({
+      enabled: z.coerce.boolean().default(false),
+      heading: optionalText,
+      text: optionalText,
+    })
+    .prefault({})
+    .superRefine((value, ctx) => {
+      if (value.enabled && !value.heading) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["heading"],
+          message: "Give the signup a heading, or switch it off.",
+        });
+      }
+    }),
+});
+
+/** The sidebar photo grid. Saved from the header screen. */
+export const sidebarInputSchema = z.object({
+  galleryHeading: optionalText,
+  gallery: z.array(z.string().trim().min(1)).max(6, "Six photos at most.").default([]),
+  galleryHref: optionalUrl,
 });
 
 export type HeaderInput = z.input<typeof headerInputSchema>;

@@ -8,6 +8,7 @@ import {
   type ActionState,
 } from "@/lib/actions/result";
 import { cms } from "@/lib/cms";
+import { allowSubmission } from "@/lib/rate-limit";
 import { enquiryInputSchema } from "@/schemas/enquiry";
 
 /**
@@ -27,9 +28,8 @@ import { enquiryInputSchema } from "@/schemas/enquiry";
  * - **The reply address is never trusted as an identity.** It is a string
  *   somebody typed. Do not send anything to it that assumes otherwise.
  *
- * TODO(phase-4): rate limiting. A honeypot stops the crude bots; it does not
- * stop somebody deliberately hammering this endpoint. That needs a shared
- * counter (Redis, or the database), which is a platform decision.
+ * Rate limited per visitor (see `lib/rate-limit.ts` for what that does and
+ * does not guarantee); the honeypot stops the crude bots before that.
  */
 export async function submitEnquiryAction(
   _previous: ActionState,
@@ -42,6 +42,11 @@ export async function submitEnquiryAction(
     // would need to tune around it.
     if (formString(formData.get("website")).trim() !== "") {
       return actionSuccess("Thanks — we will be in touch shortly.");
+    }
+
+    // Five messages in ten minutes is more than any person sends.
+    if (!(await allowSubmission("contact", 5, 10 * 60_000))) {
+      return actionError("That is a lot of messages in a short time. Please try again later.");
     }
 
     const parsed = enquiryInputSchema.safeParse({

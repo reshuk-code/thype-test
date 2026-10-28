@@ -52,7 +52,9 @@ function defaults(): SiteSettings {
       sticky: true,
       showContact: false,
       cta: { label: null, href: null },
+      promo: { image: null, alt: null, href: null },
     },
+    sidebar: { galleryHeading: null, gallery: [], galleryHref: null },
     footer: {
       blurb: null,
       // Empty rather than a guess at menu keys that may not exist: the footer
@@ -62,6 +64,7 @@ function defaults(): SiteSettings {
       showContact: true,
       copyright: null,
       legalNote: null,
+      newsletter: { enabled: false, heading: null, text: null },
     },
     maintenanceMode: false,
   };
@@ -87,11 +90,16 @@ function mergeChrome(
         ...patch.header?.announcement,
       },
       cta: { ...base.header.cta, ...patch.header?.cta },
+      promo: { ...base.header.promo, ...patch.header?.promo },
     },
     // `columns` is an array, so the patch replaces it wholesale. That is what
     // the footer form posts — removing the last column has to mean none left,
     // not "no change".
-    footer: { ...base.footer, ...patch.footer },
+    footer: {
+      ...base.footer,
+      ...patch.footer,
+      newsletter: { ...base.footer.newsletter, ...patch.footer?.newsletter },
+    },
   };
 }
 
@@ -113,6 +121,7 @@ export const settings = {
       social: { ...base.social, ...stored.social },
       defaultSeo: { ...base.defaultSeo, ...stored.defaultSeo },
       integrations: { ...base.integrations, ...stored.integrations },
+      sidebar: { ...base.sidebar, ...stored.sidebar },
       ...mergeChrome(base, stored),
     };
   },
@@ -126,6 +135,7 @@ export const settings = {
       social: { ...current.social, ...patch.social },
       defaultSeo: { ...current.defaultSeo, ...patch.defaultSeo },
       integrations: { ...current.integrations, ...patch.integrations },
+      sidebar: { ...current.sidebar, ...patch.sidebar },
       ...mergeChrome(current, patch),
     };
 

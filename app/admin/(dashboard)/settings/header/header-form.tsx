@@ -4,6 +4,8 @@ import { Save } from "lucide-react";
 import { startTransition, useActionState, useRef, type FormEvent } from "react";
 
 import { saveHeaderAction } from "@/app/admin/(dashboard)/settings/header/actions";
+import { GalleryField } from "@/components/cms/gallery-field";
+import { ImageField } from "@/components/cms/image-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { CheckboxField, Field, Input } from "@/components/ui/field";
@@ -13,10 +15,12 @@ import type { SiteSettings } from "@/types/settings";
 
 export function HeaderForm({
   header,
+  sidebar,
   hasContactDetails,
   readOnly,
 }: {
   header: SiteSettings["header"];
+  sidebar: SiteSettings["sidebar"];
   /** Drives the hint on "show contact", which does nothing until they are set. */
   hasContactDetails: boolean;
   readOnly: boolean;
@@ -162,6 +166,86 @@ export function HeaderForm({
                   name="cta.href"
                   defaultValue={header.cta.href ?? ""}
                   placeholder="/contact"
+                />
+              )}
+            </Field>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Promo banner"
+            description="Artwork beside the logo: a sponsor or an offer. Hidden when no image is set. Around 734 × 91 px."
+          />
+          <CardBody className="space-y-4">
+            <ImageField
+              id="promo-image"
+              name="promo.image"
+              label="Banner image"
+              defaultValue={header.promo.image ?? ""}
+              error={errors["promo.image"]?.[0]}
+            />
+            <Field
+              id="promo-alt"
+              label="What the banner says"
+              hint="Read aloud by screen readers in place of the image."
+              error={errors["promo.alt"]?.[0]}
+            >
+              {(props) => (
+                <Input {...props} name="promo.alt" defaultValue={header.promo.alt ?? ""} />
+              )}
+            </Field>
+            <Field id="promo-href" label="Banner link" error={errors["promo.href"]?.[0]}>
+              {(props) => (
+                <Input
+                  {...props}
+                  name="promo.href"
+                  defaultValue={header.promo.href ?? ""}
+                  placeholder="https://"
+                />
+              )}
+            </Field>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Sidebar photos"
+            description="The photo grid beside the post list and articles. Leave the heading blank to hide it."
+          />
+          <CardBody className="space-y-4">
+            <Field
+              id="sidebar-galleryHeading"
+              label="Heading"
+              error={errors.galleryHeading?.[0]}
+            >
+              {(props) => (
+                <Input
+                  {...props}
+                  name="sidebar.galleryHeading"
+                  defaultValue={sidebar.galleryHeading ?? ""}
+                  placeholder="My last adventure"
+                />
+              )}
+            </Field>
+            <GalleryField
+              name="sidebar.gallery"
+              label="Photos"
+              hint="Up to six, in display order."
+              defaultValue={sidebar.gallery}
+            />
+            <Field
+              id="sidebar-galleryHref"
+              label="Link"
+              hint="Optional, e.g. an Instagram profile."
+              error={errors.galleryHref?.[0]}
+            >
+              {(props) => (
+                <Input
+                  {...props}
+                  name="sidebar.galleryHref"
+                  defaultValue={sidebar.galleryHref ?? ""}
+                  placeholder="https://"
                 />
               )}
             </Field>

@@ -246,6 +246,45 @@ export function FooterForm({
         </Card>
 
         <Card>
+          <CardHeader
+            title="Newsletter signup"
+            description="The band above the footer. Addresses collected here appear under Newsletter."
+          />
+          <CardBody className="space-y-4">
+            <CheckboxField
+              id="newsletter-enabled"
+              name="newsletter.enabled"
+              label="Show the newsletter signup"
+              defaultChecked={footer.newsletter.enabled}
+            />
+            <Field
+              id="newsletter-heading"
+              label="Heading"
+              error={errors["newsletter.heading"]?.[0]}
+            >
+              {(props) => (
+                <Input
+                  {...props}
+                  name="newsletter.heading"
+                  defaultValue={footer.newsletter.heading ?? ""}
+                  placeholder="Latest travel tips"
+                />
+              )}
+            </Field>
+            <Field id="newsletter-text" label="Supporting line" error={errors["newsletter.text"]?.[0]}>
+              {(props) => (
+                <Input
+                  {...props}
+                  name="newsletter.text"
+                  defaultValue={footer.newsletter.text ?? ""}
+                  placeholder="Subscribe to get new stories by email."
+                />
+              )}
+            </Field>
+          </CardBody>
+        </Card>
+
+        <Card>
           <CardHeader title="Small print" />
           <CardBody className="space-y-4">
             <Field

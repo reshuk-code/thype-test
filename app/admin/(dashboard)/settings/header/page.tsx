@@ -14,7 +14,7 @@ export default async function HeaderSettingsPage() {
     <>
       <PageHeader
         title="Header"
-        description="The announcement bar, the call-to-action button and what sits beside the menu. Links themselves live under Navigation."
+        description="The announcement bar, call-to-action button, promo banner and sidebar photos. Links themselves live under Navigation."
         breadcrumbs={[
           { label: "Site settings", href: "/admin/settings" },
           { label: "Header" },
@@ -23,6 +23,7 @@ export default async function HeaderSettingsPage() {
 
       <HeaderForm
         header={current.header}
+        sidebar={current.sidebar}
         hasContactDetails={Boolean(current.contact.phone || current.contact.email)}
         readOnly={!hasPermission({ role: session.role }, "settings.update")}
       />

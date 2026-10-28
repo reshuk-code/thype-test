@@ -24,6 +24,27 @@ export interface HeaderSettings {
     label: string | null;
     href: string | null;
   };
+  /**
+   * A banner beside the logo — a sponsor or an offer. One image with the
+   * message baked in, because promotions arrive as finished artwork. Hidden
+   * when no image is set.
+   */
+  promo: {
+    image: string | null;
+    /** Required with an image: the banner's text is in the picture. */
+    alt: string | null;
+    href: string | null;
+  };
+}
+
+/** The sidebar beside listings and articles. */
+export interface SidebarSettings {
+  /** e.g. "My last adventure". Blank hides the photo grid. */
+  galleryHeading: string | null;
+  /** Up to six photos, in display order. */
+  gallery: string[];
+  /** Where the grid links, e.g. an Instagram profile. Optional. */
+  galleryHref: string | null;
 }
 
 /**
@@ -48,6 +69,12 @@ export interface FooterSettings {
   copyright: string | null;
   /** Company registration, licence or tax number — a legal requirement in some markets. */
   legalNote: string | null;
+  /** The signup band above the footer. Signups land under Newsletter. */
+  newsletter: {
+    enabled: boolean;
+    heading: string | null;
+    text: string | null;
+  };
 }
 
 /** Site-wide settings editable from /admin/settings. */
@@ -87,6 +114,7 @@ export interface SiteSettings {
   };
   header: HeaderSettings;
   footer: FooterSettings;
+  sidebar: SidebarSettings;
   maintenanceMode: boolean;
 }
 

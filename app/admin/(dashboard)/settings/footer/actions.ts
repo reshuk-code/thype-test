@@ -45,6 +45,11 @@ export async function saveFooterAction(
       showContact: formBoolean(formData.get("showContact")),
       copyright: formString(formData.get("copyright")),
       legalNote: formString(formData.get("legalNote")),
+      newsletter: {
+        enabled: formBoolean(formData.get("newsletter.enabled")),
+        heading: formString(formData.get("newsletter.heading")),
+        text: formString(formData.get("newsletter.text")),
+      },
     });
 
     if (!parsed.success) return toActionState(parsed.error);
