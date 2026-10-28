@@ -20,68 +20,59 @@ export default defineRoutes([
     path: "/",
     label: "Home",
     cmsMetadata: true,
-    description: "Hand-built landing page.",
+    description:
+      "Renders the blocks of the CMS page with slug \"/\" (Pages → Home): story strip, tiles, category strip, feed.",
   },
   {
     path: "/blog",
-    label: "Journal",
+    label: "All stories",
     cmsMetadata: true,
     // Shadows the CMS page with the same slug on purpose: prose cannot list
-    // posts. The page still supplies this route's title and description.
-    description: "Post index. Individual posts render at /blog/[slug].",
+    // posts. The page still supplies this route's title and intro.
+    description: "Every published story, newest first. Posts render at /blog/[slug].",
   },
   {
     path: "/blog/:slug",
-    label: "Blog post",
-    // Each post carries its own SEO on the record, so there is no CMS page to
-    // read metadata from — hence cmsMetadata stays off for this one.
-    description: "Renders one post. Honours draft mode, so admin Preview works.",
+    label: "Story",
+    // Each post carries its own SEO on the record.
+    description: "One story. Honours draft mode, so admin Preview works.",
+  },
+  {
+    path: "/category/:slug",
+    label: "Category",
+    description:
+      "Stories in one category. A CMS page at /category/<slug> sets its title, intro and SEO.",
+  },
+  {
+    path: "/tag/:slug",
+    label: "Tag",
+    description: "Stories with one tag. A CMS page at /tag/<slug> sets its title and SEO.",
   },
   {
     path: "/destinations",
     label: "Destinations",
     cmsMetadata: true,
-    description: "Destination index. Detail pages render at /destinations/[slug].",
+    description: "Published destinations, grouped by country, with story counts.",
   },
   {
     path: "/destinations/:slug",
     label: "Destination",
-    description: "Renders one destination. Honours draft mode for admin Preview.",
+    description: "A destination's guide text and its stories. Honours draft mode.",
   },
   {
-    path: "/tours",
-    label: "Trips",
-    cmsMetadata: true,
-    description: "Tour index, filterable by difficulty. Detail at /tours/[slug].",
+    path: "/authors/:slug",
+    label: "Author",
+    description: "A published author profile and their stories.",
   },
   {
-    path: "/tours/:slug",
-    label: "Tour package",
-    description:
-      "Itinerary, pricing, inclusions and FAQs. Honours draft mode for Preview.",
-  },
-  {
-    path: "/activities",
-    label: "Activities",
-    cmsMetadata: true,
-    description: "Activity index. Detail at /activities/[slug].",
-  },
-  {
-    path: "/activities/:slug",
-    label: "Activity",
-    description: "One activity and the trips tagged with it.",
-  },
-  {
-    path: "/faqs",
-    label: "FAQs",
-    cmsMetadata: true,
-    description: "Published FAQs, grouped by category via cms.faqs.getGrouped().",
+    path: "/search",
+    label: "Search",
+    description: "Search results. Never indexed.",
   },
   {
     path: "/contact",
     label: "Contact",
     cmsMetadata: true,
-    description:
-      "Enquiry form. Posts to cms.enquiries.create(); replies land in /admin/enquiries.",
+    description: "Contact form. Messages land in Enquiries in the admin.",
   },
 ]);

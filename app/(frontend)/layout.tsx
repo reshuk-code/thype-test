@@ -1,272 +1,233 @@
+import { Montserrat, Noto_Sans, Noto_Serif } from "next/font/google";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Lightbox } from "@/components/frontend/lightbox";
-import { SiteNav } from "@/components/frontend/site-nav";
+import { JsonLd } from "@/components/frontend/thype/json-ld";
+import { MainNav } from "@/components/frontend/thype/main-nav";
+import { NewsletterForm } from "@/components/frontend/thype/newsletter-form";
+import { SearchField } from "@/components/frontend/thype/search-field";
+import { SocialLinks, socialLinks } from "@/components/frontend/thype/social-links";
+import { categoryPath, postPath, SEARCH_PATH } from "@/config/site-paths";
+import { formatLongDate, formatPublicDate } from "@/lib/blog/format";
 import { cms } from "@/lib/cms";
+import { websiteJsonLd } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 import type { ResolvedMenuItem } from "@/types/navigation";
 import type { SiteSettings } from "@/types/settings";
 
-/**
- * Public site layout.
- *
- * This file is the developer's, not the CMS's. It shows the intended pattern —
- * fetch data through the SDK in a Server Component, render it however you like
- * — and is meant to be replaced wholesale on a real client project.
- *
- * Header and footer chrome comes from `settings.header` / `settings.footer`
- * (/admin/settings/header and /footer). The CMS decides *what* appears; the
- * markup below stays entirely the developer's.
+/*
+ * Typefaces read from the design mockups: Noto Serif for headlines, Noto Sans
+ * for text, Montserrat for navigation and labels. All three are SIL Open Font
+ * Licence. `next/font` downloads them at build time and serves them from this
+ * site, so no visitor request goes to Google.
  */
+const serif = Noto_Serif({
+  subsets: ["latin"],
+  weight: ["700"],
+  style: ["normal"],
+  variable: "--font-thype-serif",
+  display: "swap",
+});
+const sans = Noto_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  style: ["normal", "italic"],
+  variable: "--font-thype-sans",
+  display: "swap",
+});
+const label = Montserrat({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-thype-label",
+  display: "swap",
+});
 
 /**
- * Where the default template puts each content type.
- *
- * Used as the fallback for both the header menu and the footer columns, so a
- * brand-new install is navigable before anyone has built a menu in the admin:
- * publish a destination and it is reachable, rather than stranded behind an
- * empty `<nav>`. As soon as the client saves a real menu, that menu wins and
- * this is never shown.
+ * Menus this layout reads, by key. Build them under Navigation in the admin:
+ * - `main`: the nav band (Home, Travel Guides, Europe…)
+ * - `utility`: the small links in the top bar (About, Affiliates, Contact)
+ * - `footer`: the links in the bottom bar
+ * A missing or empty menu simply renders nothing.
  */
-const TEMPLATE_NAV = [
-  { href: "/destinations", label: "Destinations" },
-  { href: "/tours", label: "Trips" },
-  { href: "/activities", label: "Activities" },
-  { href: "/blog", label: "Journal" },
-  { href: "/faqs", label: "FAQs" },
-  { href: "/contact", label: "Contact" },
+const MENU_KEYS = { main: "main", utility: "utility", footer: "footer" } as const;
+
+/** Before anyone builds a main menu, keep the site navigable. */
+const FALLBACK_MAIN: ResolvedMenuItem[] = [
+  { id: "home", label: "Home", href: "/", openInNewTab: false, children: [] },
+  { id: "blog", label: "Stories", href: "/blog/", openInNewTab: false, children: [] },
+  { id: "destinations", label: "Destinations", href: "/destinations/", openInNewTab: false, children: [] },
 ];
 
-const FALLBACK_FOOTER_COLUMNS = [
-  { heading: "Explore", entries: TEMPLATE_NAV.slice(0, 3) },
-  { heading: "More", entries: TEMPLATE_NAV.slice(3) },
-];
-
-interface FooterColumnView {
-  heading: string;
-  items: ResolvedMenuItem[];
-}
-
-/** Shapes the hard-coded fallback into what the menu renderers already take. */
-function toResolved(
-  entries: { href: string; label: string }[],
-): ResolvedMenuItem[] {
-  return entries.map((entry) => ({
-    id: entry.href,
-    label: entry.label,
-    href: entry.href,
-    openInNewTab: false,
-    children: [],
-  }));
-}
-
-export default async function FrontendLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [site, menu] = await Promise.all([
+export default async function FrontendLayout({ children }: { children: ReactNode }) {
+  const [site, main, utility, footerMenu, latest] = await Promise.all([
     cms.settings.get(),
-    cms.navigation.get("main"),
+    cms.navigation.get(MENU_KEYS.main),
+    cms.navigation.get(MENU_KEYS.utility),
+    cms.navigation.get(MENU_KEYS.footer),
+    cms.posts.getPublishedPage({ perPage: 1 }),
   ]);
 
-  const { header, footer } = site;
-
-  /*
-   * One list for the nav, whichever source it came from.
-   *
-   * The template fallback is shaped into `ResolvedMenuItem` here rather than
-   * branched over in the markup: the nav then has one thing to render, and the
-   * mobile panel does not need its own copy of the branch.
-   */
-  const navItems: ResolvedMenuItem[] =
-    menu.length > 0 ? menu : toResolved(TEMPLATE_NAV);
-
-  /*
-   * Footer columns name menus rather than carrying their own links, so each
-   * one is resolved the same way the header menu is. A column whose menu was
-   * deleted — or whose every item points at unpublished content — resolves to
-   * nothing and is dropped, rather than rendering a heading over a void.
-   */
-  const configuredColumns: FooterColumnView[] = (
-    await Promise.all(
-      footer.columns.map(async (column) => ({
-        heading: column.heading,
-        items: await cms.navigation.get(column.menuKey),
-      })),
-    )
-  ).filter((column) => column.items.length > 0);
-
-  const footerColumns: FooterColumnView[] =
-    configuredColumns.length > 0
-      ? configuredColumns
-      : FALLBACK_FOOTER_COLUMNS.map((column) => ({
-          heading: column.heading,
-          items: toResolved(column.entries),
-        }));
-
-  const showHeaderContact =
-    header.showContact && Boolean(site.contact.phone || site.contact.email);
-  const headerCta =
-    header.cta.label && header.cta.href
-      ? { label: header.cta.label, href: header.cta.href }
-      : null;
+  const ticker = latest.items[0] ?? null;
+  const sameAs = socialLinks(site).map(([, href]) => href);
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AnnouncementBar announcement={header.announcement} />
-
-      <header
-        className={cn(
-          "bg-background/80 shadow-[0_1px_0_var(--border)] backdrop-blur-md",
-          // Above the announcement bar in z-order, but not stuck to it: the
-          // notice scrolls away, the navigation stays.
-          header.sticky && "sticky top-0 z-40",
-        )}
+    <div
+      className={cn(
+        serif.variable,
+        sans.variable,
+        label.variable,
+        "thype flex min-h-dvh flex-col bg-white font-body text-body",
+      )}
+    >
+      <a
+        href="#main-content"
+        className="sr-only z-50 bg-ink px-4 py-2 text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
       >
-        <div className="relative mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4">
-          <Link
-            href="/"
-            className="flex shrink-0 items-center gap-2.5 font-semibold tracking-tight"
-          >
-            {site.logo ? (
-              /*
-               * The logo replaces the name here rather than sitting beside it,
-               * so alt carries the site name — a header linking to the home
-               * page with no accessible text is a dead end for a screen reader.
-               */
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={site.logo}
-                alt={site.siteName}
-                className="h-8 w-auto object-contain"
-              />
-            ) : (
-              site.siteName
-            )}
-          </Link>
+        Skip to content
+      </a>
 
-          <div className="flex items-center gap-4">
-            <SiteNav items={navItems} />
+      <JsonLd
+        data={websiteJsonLd({
+          siteName: site.siteName,
+          siteUrl: site.siteUrl,
+          logo: site.logo,
+          description: site.defaultSeo.description ?? (site.tagline || null),
+          sameAs,
+          searchPath: `${SEARCH_PATH}/`,
+        })}
+      />
 
-            {showHeaderContact ? (
-              /* Hidden below md, where the nav collapses to a button and there
-                 is no room left on the row. The footer still carries these. */
-              <p className="hidden items-center gap-3 text-sm text-muted-foreground lg:flex">
-                {site.contact.phone ? (
-                  <a
-                    href={`tel:${site.contact.phone.replace(/\s+/g, "")}`}
-                    className="transition-colors hover:text-foreground"
-                  >
-                    {site.contact.phone}
-                  </a>
-                ) : null}
-                {site.contact.email ? (
-                  <a
-                    href={`mailto:${site.contact.email}`}
-                    className="transition-colors hover:text-foreground"
-                  >
-                    {site.contact.email}
-                  </a>
-                ) : null}
+      <header>
+        {/* ------------------------------------------------------ top bar */}
+        <div className="bg-night text-white">
+          <div className="mx-auto flex h-[2.8rem] w-full max-w-[71.75rem] items-center justify-between gap-6 px-4 sm:px-6 xl:px-0">
+            <div className="flex min-w-0 items-center gap-10">
+              <p className="hidden font-label text-[0.6875rem] font-semibold uppercase md:block">
+                {/* Rendered at build/revalidate time in UTC; see lib/blog/format.ts. */}
+                {formatLongDate(new Date())}
               </p>
-            ) : null}
+              {utility.length > 0 ? (
+                // Below sm the search needs the room; these links repeat in the footer.
+                <nav aria-label="Utility" className="hidden sm:block">
+                  <ul className="flex gap-4">
+                    {utility.map((item) =>
+                      item.href ? (
+                        <li key={item.id}>
+                          <Link
+                            href={item.href}
+                            className="font-label text-[0.6875rem] font-semibold uppercase transition-colors hover:text-bronze"
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      ) : null,
+                    )}
+                  </ul>
+                </nav>
+              ) : null}
+            </div>
+            <SearchField id="header-search" variant="dark" className="w-full max-w-56 sm:w-56" />
+          </div>
+        </div>
 
-            {headerCta ? (
-              <Link
-                href={headerCta.href}
-                className="hidden shrink-0 rounded-xl bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 sm:block"
-              >
-                {headerCta.label}
-              </Link>
-            ) : null}
+        {/* ------------------------------------------------- latest story */}
+        {ticker ? (
+          <div className="border-b border-line">
+            <p className="mx-auto flex h-[3.25rem] w-full max-w-[71.75rem] items-center gap-4 overflow-hidden whitespace-nowrap px-4 sm:gap-9 sm:px-6 xl:px-0">
+              <span className="shrink-0 font-body text-sm uppercase text-ink">Latest</span>
+              <span className="flex min-w-0 items-center gap-3.5">
+                {ticker.category ? (
+                  <Link
+                    href={categoryPath(ticker.category)}
+                    className="hidden shrink-0 font-body text-sm uppercase text-bronze-strong hover:underline sm:inline"
+                  >
+                    {ticker.category}
+                  </Link>
+                ) : null}
+                <time
+                  dateTime={ticker.publishedAt ?? undefined}
+                  className="hidden shrink-0 text-sm text-meta sm:inline"
+                >
+                  {formatPublicDate(ticker.publishedAt)}
+                </time>
+                <Link
+                  href={postPath(ticker.slug)}
+                  className="truncate font-serif text-base font-bold text-ink hover:text-bronze-strong"
+                >
+                  {ticker.title}
+                </Link>
+              </span>
+            </p>
+          </div>
+        ) : null}
+
+        {/* ------------------------------------------------ brand + promo */}
+        <div className="mx-auto flex w-full max-w-[71.75rem] flex-col gap-5 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between xl:px-0">
+          <Brand site={site} />
+          <Promo promo={site.header.promo} />
+        </div>
+
+        {/* --------------------------------------------------- nav band */}
+        <div className={cn("bg-sage", site.header.sticky && "sticky top-0 z-30")}>
+          <div className="relative mx-auto flex w-full max-w-[71.75rem] items-center justify-between px-4 sm:px-6 xl:px-0">
+            <MainNav items={main.length > 0 ? main : FALLBACK_MAIN} />
+            <SocialLinks site={site} className="-mr-2 gap-1" />
           </div>
         </div>
       </header>
 
-      <main className="flex-1">{children}</main>
+      <main id="main-content" className="flex-1">
+        {children}
+      </main>
 
-      <footer className="border-t border-border bg-surface">
-        <div className="mx-auto w-full max-w-6xl px-6 py-14">
-          <div
-            className={cn(
-              "grid gap-10 sm:grid-cols-2",
-              // The about block and the contact block bracket the columns, so
-              // the track count follows how many the client configured.
-              footerColumns.length >= 3 ? "lg:grid-cols-5" : "lg:grid-cols-4",
-            )}
-          >
+      <footer>
+        {site.footer.newsletter.enabled && site.footer.newsletter.heading ? (
+          <section aria-labelledby="newsletter-heading" className="bg-sage">
+            <div className="mx-auto w-full max-w-[71.75rem] px-4 py-16 text-center sm:px-6 xl:px-0">
+              <h2
+                id="newsletter-heading"
+                className="font-serif text-[2rem] font-bold leading-tight text-ink sm:text-[2.875rem]"
+              >
+                {site.footer.newsletter.heading}
+              </h2>
+              {site.footer.newsletter.text ? (
+                <p className="mt-3 text-lg text-body">{site.footer.newsletter.text}</p>
+              ) : null}
+              <div className="mt-5">
+                <NewsletterForm />
+              </div>
+              <SocialLinks
+                site={site}
+                className="mt-6 justify-center gap-8"
+                iconClassName="text-meta"
+              />
+            </div>
+          </section>
+        ) : null}
+
+        <div className="bg-night text-white/80">
+          <div className="mx-auto flex w-full max-w-[71.75rem] flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 xl:px-0">
             <div>
-              <p className="font-semibold tracking-tight">{site.siteName}</p>
-              {(footer.blurb ?? site.tagline) ? (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {footer.blurb ?? site.tagline}
-                </p>
+              <p className="text-base">{copyrightLine(site.footer.copyright, site.siteName)}</p>
+              {site.footer.legalNote ? (
+                <p className="mt-1 text-xs text-white/70">{site.footer.legalNote}</p>
               ) : null}
             </div>
-
-            {footerColumns.map((column) => (
-              <nav key={column.heading} aria-label={column.heading}>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  {column.heading}
-                </p>
-                <ul className="mt-3 space-y-2 text-sm">
-                  {column.items.map((item) => (
-                    <li key={item.id}>
-                      <FooterLink item={item} />
-                    </li>
-                  ))}
+            {footerMenu.length > 0 ? (
+              <nav aria-label="Footer">
+                <ul className="flex flex-wrap gap-x-6 gap-y-2">
+                  {footerMenu.map((item) =>
+                    item.href ? (
+                      <li key={item.id}>
+                        <Link href={item.href} className="text-base transition-colors hover:text-white">
+                          {item.label}
+                        </Link>
+                      </li>
+                    ) : null,
+                  )}
                 </ul>
               </nav>
-            ))}
-
-            {footer.showContact || footer.showSocial ? (
-              <div>
-                {footer.showContact ? (
-                  <>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Contact
-                    </p>
-                    <ul className="mt-3 space-y-2 text-sm">
-                      {site.contact.email ? (
-                        <li>
-                          <a
-                            href={`mailto:${site.contact.email}`}
-                            className="text-muted-foreground transition-colors hover:text-foreground"
-                          >
-                            {site.contact.email}
-                          </a>
-                        </li>
-                      ) : null}
-                      {site.contact.phone ? (
-                        <li>
-                          <a
-                            href={`tel:${site.contact.phone.replace(/\s+/g, "")}`}
-                            className="text-muted-foreground transition-colors hover:text-foreground"
-                          >
-                            {site.contact.phone}
-                          </a>
-                        </li>
-                      ) : null}
-                      {site.contact.address ? (
-                        <li className="text-muted-foreground">
-                          {site.contact.address}
-                        </li>
-                      ) : null}
-                    </ul>
-                  </>
-                ) : null}
-
-                {footer.showSocial ? <SocialLinks social={site.social} /> : null}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="mt-12 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t border-border pt-6 text-sm text-muted-foreground">
-            <p>{copyrightLine(footer.copyright, site.siteName)}</p>
-            {footer.legalNote ? (
-              <p className="text-xs">{footer.legalNote}</p>
             ) : null}
           </div>
         </div>
@@ -278,106 +239,61 @@ export default async function FrontendLayout({
 }
 
 /**
- * The strip above the header.
- *
- * With a link but no label the whole line becomes the link, which is what an
- * editor who filled in only a URL meant; with both, the notice stays text and
- * the label is the only thing clickable.
+ * The logo from Site settings, or the site name set as a wordmark until one
+ * is uploaded. The tagline comes from Site settings too; the mockup's "News &
+ * magazine theme" is placeholder copy, so nothing is hardcoded.
  */
-function AnnouncementBar({
-  announcement,
-}: {
-  announcement: SiteSettings["header"]["announcement"];
-}) {
-  if (!announcement.enabled || !announcement.text) return null;
-
-  const { text, href, linkLabel } = announcement;
-
+function Brand({ site }: { site: SiteSettings }) {
   return (
-    <div className="bg-primary text-primary-foreground">
-      <p className="mx-auto w-full max-w-6xl px-6 py-2 text-center text-sm">
-        {href && !linkLabel ? (
-          <Link href={href} className="underline-offset-4 hover:underline">
-            {text}
-          </Link>
-        ) : (
-          <>
-            {text}
-            {href && linkLabel ? (
-              <>
-                {" "}
-                <Link href={href} className="font-medium underline underline-offset-4">
-                  {linkLabel}
-                </Link>
-              </>
-            ) : null}
-          </>
-        )}
-      </p>
-    </div>
+    <Link href="/" className="flex items-center gap-4">
+      {site.logo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={site.logo} alt={site.siteName} className="h-10 w-auto" />
+      ) : (
+        <span className="font-serif text-[2.4rem] font-bold italic leading-none tracking-tight text-logo">
+          {site.siteName.toLowerCase()}.
+        </span>
+      )}
+      {site.tagline ? (
+        <span className="hidden font-label text-[0.6875rem] font-semibold uppercase tracking-[0.25em] text-meta sm:block">
+          {site.tagline}
+        </span>
+      ) : null}
+    </Link>
   );
 }
 
-/**
- * One footer link, which may not be a link at all.
- *
- * The CMS resolves an item to `href: null` for a plain heading, and a link to
- * nowhere is worse than text — the same rule `SiteNav` follows.
- */
-function FooterLink({ item }: { item: ResolvedMenuItem }) {
-  if (!item.href) {
-    return <span className="text-muted-foreground">{item.label}</span>;
-  }
+function Promo({ promo }: { promo: SiteSettings["header"]["promo"] }) {
+  if (!promo.image) return null;
 
-  return (
-    <Link
-      href={item.href}
-      target={item.openInNewTab ? "_blank" : undefined}
-      rel={item.openInNewTab ? "noreferrer" : undefined}
-      className="text-muted-foreground transition-colors hover:text-foreground"
+  const image = (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={promo.image}
+      alt={promo.alt ?? ""}
+      width={734}
+      height={91}
+      className="h-auto w-full max-w-[45.875rem]"
+    />
+  );
+
+  return promo.href ? (
+    <a
+      href={promo.href}
+      target={/^https?:/i.test(promo.href) ? "_blank" : undefined}
+      rel={/^https?:/i.test(promo.href) ? "noreferrer sponsored" : undefined}
+      className="block lg:w-[45.875rem]"
     >
-      {item.label}
-    </Link>
+      {image}
+    </a>
+  ) : (
+    <div className="lg:w-[45.875rem]">{image}</div>
   );
 }
 
 /** Expands the tokens the footer screen documents, with a sane default. */
 function copyrightLine(template: string | null, siteName: string): string {
   const year = String(new Date().getFullYear());
-
-  if (!template) return `© ${year} ${siteName}`;
-
+  if (!template) return `© ${year} ${siteName}. All rights reserved.`;
   return template.replaceAll("{year}", year).replaceAll("{siteName}", siteName);
-}
-
-/** Only the networks the client actually filled in. */
-function SocialLinks({ social }: { social: SiteSettings["social"] }) {
-  const links = (
-    [
-      ["Facebook", social.facebook],
-      ["Instagram", social.instagram],
-      ["Twitter", social.twitter],
-      ["YouTube", social.youtube],
-      ["Tripadvisor", social.tripadvisor],
-    ] as const
-  ).filter(([, href]) => Boolean(href));
-
-  if (links.length === 0) return null;
-
-  return (
-    <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-      {links.map(([label, href]) => (
-        <li key={label}>
-          <a
-            href={href as string}
-            target="_blank"
-            rel="noreferrer"
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {label}
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
 }

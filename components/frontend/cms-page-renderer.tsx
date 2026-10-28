@@ -26,10 +26,12 @@ export function CmsPageRenderer({ page }: { page: CmsPage }) {
   return (
     <article>
       {opensWithHero ? null : (
-        <header className="mx-auto w-full max-w-3xl px-6 pt-16">
-          <h1 className="text-4xl font-semibold tracking-tight">{page.title}</h1>
+        <header className="mx-auto w-full max-w-3xl px-4 pt-14 sm:px-6">
+          <h1 className="font-serif text-[2rem] font-bold leading-tight text-ink sm:text-[2.5rem]">
+            {page.title}
+          </h1>
           {page.excerpt ? (
-            <p className="mt-3 text-lg text-muted-foreground">{page.excerpt}</p>
+            <p className="mt-4 text-lg leading-relaxed text-body">{page.excerpt}</p>
           ) : null}
 
           {page.featuredImage ? (
@@ -40,7 +42,7 @@ export function CmsPageRenderer({ page }: { page: CmsPage }) {
             <img
               src={page.featuredImage}
               alt=""
-              className="mt-8 w-full rounded-card object-cover shadow-[var(--shadow-card)]"
+              className="mt-8 w-full object-cover"
             />
           ) : null}
         </header>

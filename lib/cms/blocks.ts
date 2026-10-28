@@ -323,3 +323,133 @@ registerBlock({
     { name: "text", label: "Intro text", kind: "textarea" },
   ],
 });
+
+/* ------------------------------------------------------- Thype editorial */
+
+/*
+ * The sections of the Thype homepage, as blocks, so the editor decides which
+ * appear and in what order from Pages → Home. Each reads published posts at
+ * render time; none stores an article id, so publishing a story is enough to
+ * place it. Rendered by components/frontend/thype/blocks.tsx.
+ */
+
+const postSourceField = z.enum(["featured", "latest"]).default("featured");
+
+registerBlock({
+  name: "story-strip",
+  label: "Featured stories strip",
+  description: "Full-width row of photo tiles with headlines. Featured stories first.",
+  schema: z.object({
+    heading: headingField,
+    source: postSourceField,
+    limit: z.coerce.number().int().min(1).max(4).default(4),
+  }),
+  fields: [
+    {
+      name: "heading",
+      label: "Heading (screen readers only)",
+      kind: "text",
+      hint: "The strip shows no visible heading; this names it for assistive technology.",
+    },
+    {
+      name: "source",
+      label: "Stories",
+      kind: "select",
+      options: [
+        { value: "featured", label: "Featured, topped up with the latest" },
+        { value: "latest", label: "Latest" },
+      ],
+    },
+    { name: "limit", label: "How many (1–4)", kind: "number" },
+  ],
+});
+
+const TILE_COUNT = 4;
+
+registerBlock({
+  name: "collection-tiles",
+  label: "Collection tiles",
+  description: "Up to four photo tiles linking to categories, destinations or any page.",
+  schema: z.object({
+    heading: headingField,
+    ...Object.fromEntries(
+      Array.from({ length: TILE_COUNT }, (_, index) => [
+        [`tile${index + 1}Label`, z.string().default("")],
+        [`tile${index + 1}Image`, z.string().default("")],
+        [`tile${index + 1}Href`, z.string().default("")],
+      ]).flat(),
+    ),
+  }),
+  fields: [
+    {
+      name: "heading",
+      label: "Heading (screen readers only)",
+      kind: "text",
+    },
+    ...Array.from({ length: TILE_COUNT }, (_, index): BlockField[] => [
+      { name: `tile${index + 1}Label`, label: `Tile ${index + 1}: label`, kind: "text" },
+      { name: `tile${index + 1}Image`, label: `Tile ${index + 1}: photo`, kind: "image" },
+      {
+        name: `tile${index + 1}Href`,
+        label: `Tile ${index + 1}: link`,
+        kind: "text",
+        placeholder: "/category/europe/",
+        hint: index === 0 ? "A tile with no label or no link is left out." : undefined,
+      },
+    ]).flat(),
+  ],
+});
+
+registerBlock({
+  name: "category-strip",
+  label: "Category strip",
+  description: "A tinted band with a centred heading and the newest stories from one category.",
+  schema: z.object({
+    heading: headingField,
+    category: z.string().default(""),
+    limit: z.coerce.number().int().min(1).max(6).default(3),
+  }),
+  fields: [
+    { name: "heading", label: "Heading", kind: "text", placeholder: "Travel Guides" },
+    {
+      name: "category",
+      label: "Category",
+      kind: "text",
+      hint: "Exactly as it is written on the posts. Blank shows the latest stories.",
+    },
+    { name: "limit", label: "How many", kind: "number" },
+  ],
+});
+
+registerBlock({
+  name: "story-feed",
+  label: "Story feed with sidebar",
+  description: "The latest stories, a lead then a grid, with Load more and the sidebar.",
+  schema: z.object({
+    heading: headingField,
+    category: z.string().default(""),
+    perPage: z.coerce.number().int().min(3).max(15).default(7),
+    showSidebar: z.coerce.boolean().default(true),
+  }),
+  fields: [
+    {
+      name: "heading",
+      label: "Heading",
+      kind: "text",
+      hint: "Leave blank for no visible heading.",
+    },
+    {
+      name: "category",
+      label: "Category",
+      kind: "text",
+      hint: "Blank for every category.",
+    },
+    {
+      name: "perPage",
+      label: "Stories before Load more",
+      kind: "number",
+      hint: "The first is the lead; the rest fill a two-column grid. Odd numbers fill it evenly.",
+    },
+    { name: "showSidebar", label: "Show the sidebar", kind: "boolean" },
+  ],
+});

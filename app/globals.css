@@ -139,6 +139,47 @@
   --radius-card: var(--radius-card);
 }
 
+/*
+ * Thype public-site tokens, from the design hand-off (Home.png, Blog
+ * Details.png). Scoped to `.thype`, which the frontend layout sets, so the
+ * admin keeps its own theme. Colours were sampled from the mockups; see
+ * docs/thype.md for the two that were darkened to pass WCAG AA.
+ */
+.thype {
+  --thype-ink: #1d1e1d;          /* headlines */
+  --thype-body: #3a3b3a;         /* running text */
+  /* Design meta grey is ~#a8a8a4 (2.4:1 on white); darkened to pass AA. */
+  --thype-meta: #6b6c69;
+  --thype-night: #161716;        /* top bar, footer */
+  --thype-sage: #f2f6f2;         /* nav band, feature bands */
+  --thype-line: #e3e6e3;
+  /* Design bronze. Decoration only: rules, dots, borders, large display text. */
+  --thype-bronze: #ac7f52;
+  /* Bronze for small text and filled buttons: #ac7f52 is 3.6:1, this is 5.6:1. */
+  --thype-bronze-strong: #86603a;
+  --thype-logo: #e94828;
+
+  --background: #ffffff;
+  --foreground: var(--thype-body);
+  --ring: var(--thype-bronze-strong);
+}
+
+@theme inline {
+  --color-ink: var(--thype-ink);
+  --color-body: var(--thype-body);
+  --color-meta: var(--thype-meta);
+  --color-night: var(--thype-night);
+  --color-sage: var(--thype-sage);
+  --color-line: var(--thype-line);
+  --color-bronze: var(--thype-bronze);
+  --color-bronze-strong: var(--thype-bronze-strong);
+  --color-logo: var(--thype-logo);
+
+  --font-serif: var(--font-thype-serif), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-thype-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-thype-label), ui-sans-serif, system-ui, sans-serif;
+}
+
 @layer base {
   * {
     border-color: var(--border);
@@ -225,6 +266,87 @@
     float: left;
     height: 0;
     pointer-events: none;
+  }
+}
+
+/*
+ * Article prose. The rich text renderer is shared with the admin preview and
+ * carries its own utility classes, so the design's reading styles are applied
+ * here, unlayered, which is what lets them win over those utilities inside an
+ * article without touching the renderer.
+ */
+.thype-prose {
+  font-family: var(--font-thype-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--thype-body);
+}
+
+.thype-prose h2,
+.thype-prose h3,
+.thype-prose h4 {
+  font-family: var(--font-thype-serif), Georgia, "Times New Roman", serif;
+  color: var(--thype-ink);
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 2rem;
+  scroll-margin-top: 6rem;
+}
+
+.thype-prose h2 { font-size: 1.5rem; }
+.thype-prose h3 { font-size: 1.3rem; }
+.thype-prose h4 { font-size: 1.125rem; }
+
+.thype-prose a {
+  color: var(--thype-bronze-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.thype-prose ul > li::marker {
+  color: var(--thype-bronze);
+}
+
+.thype-prose blockquote {
+  border-left: 1px solid var(--thype-bronze);
+  padding: 0.5rem 0 0.5rem 1.5rem;
+  font-style: italic;
+  color: var(--thype-body);
+}
+
+.thype-prose figure > div {
+  border-radius: 0;
+}
+
+.thype-prose figcaption {
+  font-size: 0.875rem;
+  color: var(--thype-meta);
+}
+
+.thype-prose img {
+  width: 100%;
+  height: auto;
+}
+
+/*
+ * The design sets a photo beside a pull quote. Editors produce that by
+ * placing a quote straight after an image; on wide screens the pair sits
+ * side by side, on narrow ones they stack. Nothing is lost if the CSS fails.
+ */
+@media (min-width: 768px) {
+  .thype-prose > div > figure:has(+ blockquote) {
+    float: left;
+    width: 52%;
+    margin: 0.5rem 2rem 1rem 0;
+  }
+
+  .thype-prose > div > figure + blockquote {
+    overflow: hidden;
+    margin-top: 2.5rem;
+  }
+
+  .thype-prose > div > blockquote + * {
+    clear: both;
   }
 }
 

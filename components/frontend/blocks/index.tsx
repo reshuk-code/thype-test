@@ -3,6 +3,12 @@ import type { ReactNode } from "react";
 
 import { EnquiryForm } from "@/components/frontend/enquiry-form";
 import { RichText } from "@/components/frontend/rich-text";
+import {
+  CategoryStripBlock,
+  CollectionTilesBlock,
+  StoryFeedBlock,
+  StoryStripBlock,
+} from "@/components/frontend/thype/blocks";
 import { cms } from "@/lib/cms";
 import { formatDate } from "@/lib/utils";
 
@@ -92,7 +98,7 @@ function RichTextBlock(props: Record<string, unknown>) {
   if (!content) return null;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-8 leading-relaxed [&_h2]:mt-10 [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h3]:mt-8 [&_h3]:text-xl [&_h3]:font-semibold">
+    <div className="thype-prose mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
       <RichText content={content} />
     </div>
   );
@@ -461,4 +467,9 @@ export const BLOCK_COMPONENTS: Record<string, BlockComponent> = {
   testimonials: TestimonialsBlock as BlockComponent,
   faq: FaqBlock as BlockComponent,
   "contact-form": ContactFormBlock as BlockComponent,
+  // Thype editorial sections. See components/frontend/thype/blocks.tsx.
+  "story-strip": StoryStripBlock as BlockComponent,
+  "collection-tiles": CollectionTilesBlock,
+  "category-strip": CategoryStripBlock as BlockComponent,
+  "story-feed": StoryFeedBlock as BlockComponent,
 };
