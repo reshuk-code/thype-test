@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { ThemeScript } from "@/components/cms/theme";
 import { ThemeProvider } from "@/components/cms/theme-provider";
+import { TopLoader } from "@/components/ui/top-loader";
 import { Toaster } from "@/components/ui/toaster";
 import { getCmsConfig } from "@/lib/cms/config";
 import { resolveAuth } from "@/lib/connections/resolve";
@@ -41,6 +42,7 @@ export default async function AdminRootLayout({
       */}
       <ThemeScript />
       <div data-cms-admin={config.admin.basePath}>{children}</div>
+      <TopLoader className="bg-primary" />
       <Toaster />
     </ThemeProvider>
   );

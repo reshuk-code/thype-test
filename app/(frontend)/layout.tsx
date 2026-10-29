@@ -6,8 +6,10 @@ import { Lightbox } from "@/components/frontend/lightbox";
 import { JsonLd } from "@/components/frontend/thype/json-ld";
 import { MainNav } from "@/components/frontend/thype/main-nav";
 import { NewsletterForm } from "@/components/frontend/thype/newsletter-form";
+import { RouteSkeleton } from "@/components/frontend/thype/route-skeleton";
 import { SearchField } from "@/components/frontend/thype/search-field";
 import { SocialLinks, socialLinks } from "@/components/frontend/thype/social-links";
+import { TopLoader } from "@/components/ui/top-loader";
 import { categoryPath, postPath, SEARCH_PATH } from "@/config/site-paths";
 import { formatLongDate, formatPublicDate } from "@/lib/blog/format";
 import { cms } from "@/lib/cms";
@@ -178,7 +180,7 @@ export default async function FrontendLayout({ children }: { children: ReactNode
       </header>
 
       <main id="main-content" className="flex-1">
-        {children}
+        <RouteSkeleton>{children}</RouteSkeleton>
       </main>
 
       <footer>
@@ -234,6 +236,7 @@ export default async function FrontendLayout({ children }: { children: ReactNode
       </footer>
 
       <Lightbox />
+      <TopLoader className="bg-bronze" />
     </div>
   );
 }
