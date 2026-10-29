@@ -9,12 +9,30 @@ Branch: `feature/thype`. Design source: two desktop mockups (`Home.png`,
 
 ---
 
+## Hosting
+
+**Current (from 2026-10-28):** Vercel, deployed from GitHub, with Neon
+Postgres for content and Neon Object Storage for media. Everything about it —
+resources, environment variables, first deploy, limits, troubleshooting — is
+in [`DEPLOY-VERCEL-NEON.md`](DEPLOY-VERCEL-NEON.md). The Neon database is
+described by the client as temporary.
+
+The Docker/VPS route ([`XCLOUD_DOCKER.md`](XCLOUD_DOCKER.md)) still works but
+is not being used for Thype now, and its image has not been built on this
+branch.
+
+| Mode | `CMS_DATABASE` | `CMS_STORAGE` | Use |
+|---|---|---|---|
+| Local only | `local` (default) | `local` (default) | Offline work, tests, the seed script |
+| Local against Neon | `neon` | `s3` | Normal development once content lives in Neon |
+| Vercel | `neon` | `s3` | Production |
+
 ## Tenancy
 
 One repository branch, one deployment, one database per client — the model
-the CMS already uses (`ARCHITECTURE.md` §9). Thype has its own Postgres
-container, uploads volume and `.env`; nothing is shared with other clients, so
-there is no tenant column and no cross-client query to get wrong.
+the CMS already uses (`ARCHITECTURE.md` §9). Thype has its own Neon project
+(database and bucket) and its own Vercel project; nothing is shared with other
+clients, so there is no tenant column and no cross-client query to get wrong.
 
 Changes that are generic CMS improvements (authors, archived status, post
 fields, redirects on rename, rate limiting, tests) could be upstreamed to
@@ -65,10 +83,11 @@ migration. Two **new tables** are needed, created by the same idempotent
 
 How to apply:
 
+- **Neon (current):** already applied to the `thype` project on 2026-10-28.
+  For a new branch or project, run `adapters/neon/schema.sql` in the Neon SQL
+  editor, or `/admin/settings/connections` → create tables (dev only).
 - **Docker / self-hosted Postgres:** nothing to do. `scripts/docker-start.mjs`
   runs `adapters/postgres/schema.sql` on every start.
-- **Neon:** `/admin/settings/connections` → create tables (dev only), or run
-  `adapters/neon/schema.sql` in the Neon SQL editor.
 - **Supabase:** run `adapters/supabase/schema.sql` in the SQL editor.
 - **Local JSON:** nothing; files are created on first write.
 
@@ -171,7 +190,13 @@ with a requirement:
 
 - Public writes: contact and newsletter only. Both have a honeypot and a
   per-IP rate limit (`lib/rate-limit.ts`, in-memory; exact for the single
-  Docker container, approximate if scaled out).
+  Docker container, approximate on Vercel where each function instance counts
+  on its own).
+- `/admin/setup` is open until the first admin exists. Create that account
+  locally against Neon before the Vercel URL is public
+  (`DEPLOY-VERCEL-NEON.md`, step 4).
+- Storage secrets (`STORAGE_S3_SECRET_ACCESS_KEY`, `NEON_DATABASE_URL`) live
+  in `.env.local` and Vercel only. Media URLs are public by design.
 - Newsletter never reveals whether an address was already subscribed. The
   CSV export defuses spreadsheet formulas.
 - JSON-LD is serialised with `<`, `>`, `&` escaped.
@@ -191,6 +216,15 @@ npm run build
 Local sample content: `npm run cms:seed:thype -- --images <folder of jpgs> --yes`
 (local adapter only; merges, never replaces hand-made records).
 
+Copy local content into Neon: `npm run cms:migrate -- --dry-run`, then
+`-- --yes` (records + media files, URLs rewritten; see
+`DEPLOY-VERCEL-NEON.md`, step 3). The seed's 29 records and 30 images are
+already in Neon.
+
+`tests/storage.test.ts` covers storage key safety and S3 URL encoding. The S3
+adapter's network path was checked against the live Neon bucket (upload,
+public read, signed read, delete) rather than mocked.
+
 ---
 
 ## Open items
@@ -206,5 +240,9 @@ Local sample content: `npm run cms:seed:thype -- --images <folder of jpgs> --yes
 - Promo banner artwork and link, if the banner is to run.
 - Whether category pages need richer intros than the CMS-page pattern gives
   (photo, description per category): that would need a categories store.
-- Docker image build not yet run on this branch (the dev machine was out of
-  memory); run `docker compose build` before deploying.
+- Docker image build not run on this branch. Not needed while Thype is on
+  Vercel; run `docker compose build` if it ever moves to the VPS.
+- Videos and documents over 4 MB cannot be uploaded on Vercel until
+  presigned browser uploads exist (`DEPLOY-VERCEL-NEON.md`, section 7).
+- Decide how Preview deployments get data (`DEPLOY-VERCEL-NEON.md`,
+  section 6) before a second developer starts pushing branches.

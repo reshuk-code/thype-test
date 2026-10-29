@@ -16,6 +16,7 @@
     "cms:reset": "node scripts/reset-local-data.mjs",
     "cms:seed": "node scripts/seed-demo-content.mjs",
     "cms:seed:thype": "node scripts/seed-thype.mjs",
+    "cms:migrate": "node --env-file-if-exists=.env.local --conditions=react-server --experimental-transform-types --no-warnings --import ./tests/register.mjs scripts/migrate.ts",
     "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {

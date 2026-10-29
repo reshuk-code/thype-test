@@ -7,7 +7,7 @@ import {
 import type { ProviderCredentials } from "@/types/connections";
 
 import {
-  buildStorageKey,
+  resolveStorageKey,
   type StorageAdapter,
   type StoredFile,
   type UploadInput,
@@ -35,7 +35,7 @@ export function createSupabaseStorageAdapter(
     maxUploadBytes: MAX_UPLOAD_BYTES,
 
     async upload(input: UploadInput): Promise<StoredFile> {
-      const key = buildStorageKey(input.filename, input.folder);
+      const key = resolveStorageKey(input);
       const body = Buffer.from(input.body as ArrayBuffer);
 
       if (body.byteLength > MAX_UPLOAD_BYTES) {

@@ -444,22 +444,34 @@ put a deploy inside the CMS).
       - Supabase Auth sign-in
       - Neon Auth (Stack Auth) sign-in
       - Clerk sign-in, provider and middleware wiring
-- [ ] **Media migration.** Copying between backends moves database records but
-      not files held by the storage adapter.
+- [x] **Media migration, local → hosted.** `npm run cms:migrate` copies
+      records *and* the `public/uploads/` files they reference into the
+      configured backend, rewriting URLs. Not built: hosted → hosted (e.g.
+      Supabase Storage → S3); the admin Copy data tool still moves records
+      only. See docs/DEPLOY-VERCEL-NEON.md §9 for doing it by hand.
 - [ ] **Verify the MongoDB adapter** against a live cluster; add index creation
       at `init()`.
 - [ ] **Implement the Firebase adapter**, or formally drop it. The file
       documents what makes Firestore awkward for this contract.
-- [ ] **S3 storage adapter** with presigned browser uploads.
+- [x] **S3 storage adapter** (`lib/storage/providers/s3.ts`). Verified on
+      Neon Object Storage; SigV4 on `node:crypto`, no AWS SDK. Path-style
+      URLs, public-read buckets only.
+- [ ] **Presigned browser uploads** straight to the bucket, so files over
+      Vercel's 4.5 MB request limit can be uploaded. Needs bucket CORS and a
+      register-after-upload action; today uploads pass through a Server
+      Action and are capped at 4 MB on Vercel.
+- [ ] **Shared rate-limit store.** `lib/rate-limit.ts` counts per process,
+      which is approximate on serverless hosts.
 - [ ] **Custom roles** — edit permission bundles from the admin.
 - [ ] **Per-record ownership** so an author edits only their own drafts.
 - [ ] **Session revocation** ("sign out everywhere").
 - [ ] **CLI** — `create-travel-site <name>` to scaffold a client project.
 - [ ] **Multi-tenancy** if it is ever needed. Seams are noted in the code; the
       MVP deliberately does not implement it.
-- [ ] **Tests.** There is no test suite yet. The first ones worth writing:
-      `lib/database/query.ts` (filter/sort/paginate semantics), slug
-      normalisation, the permission matrix, and publication-window logic.
+- [ ] **Tests.** `npm test` exists (blog logic, repositories, storage keys).
+      Still worth writing: `lib/database/query.ts` (filter/sort/paginate
+      semantics), slug normalisation, the permission matrix, and
+      publication-window logic.
 - [ ] **i18n.** `locales` and `defaultLocale` exist in config so the data model
       can absorb translations without a migration; nothing consumes them yet.
 

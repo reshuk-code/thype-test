@@ -21,6 +21,14 @@ client. The CMS is a library beside the app, not a framework around it:
 Stack: Next.js (App Router, React 19, Server Components and Server Actions),
 TypeScript strict, Tailwind v4, Radix primitives, Zod v4, no ORM.
 
+This branch (`feature/thype`) is the Thype travel magazine: read
+[`docs/thype.md`](docs/thype.md) for what differs from the template. It is
+hosted on Vercel with Neon Postgres and Neon Object Storage
+(`CMS_DATABASE=neon`, `CMS_STORAGE=s3`); see
+[`docs/DEPLOY-VERCEL-NEON.md`](docs/DEPLOY-VERCEL-NEON.md). Local work can
+point at the same Neon project through `.env.local`, so a write in the admin
+is a write to the real database.
+
 ---
 
 ## Before you finish any task

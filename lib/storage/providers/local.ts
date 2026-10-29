@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import {
-  buildStorageKey,
+  resolveStorageKey,
   type StorageAdapter,
   type StoredFile,
   type UploadInput,
@@ -29,7 +29,7 @@ export function createLocalStorageAdapter(): StorageAdapter {
     maxUploadBytes: MAX_UPLOAD_BYTES,
 
     async upload(input: UploadInput): Promise<StoredFile> {
-      const key = buildStorageKey(input.filename, input.folder);
+      const key = resolveStorageKey(input);
       const target = path.join(UPLOAD_ROOT, key);
 
       // `key` is built from a sanitised stem, but resolve-and-check anyway so

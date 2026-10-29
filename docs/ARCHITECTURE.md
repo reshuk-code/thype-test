@@ -187,7 +187,10 @@ nothing until you write explicit policies.
 ### `StorageAdapter`
 
 Configured independently of the database. `local` writes to `public/uploads/`;
-`supabase` uses a public bucket; `s3` is a Phase 4 stub.
+`supabase` uses a public bucket; `s3` speaks the S3 protocol to any
+compatible service (verified on Neon Object Storage) with hand-rolled SigV4
+signing and public-read buckets. On Vercel, `lib/storage/index.ts` lowers
+`maxUploadBytes` to 4 MB to stay under the platform's request-body limit.
 
 The media library sits on top of it: files go to the storage adapter, their
 metadata to the database adapter, and `lib/cms/repositories/media.ts` is the

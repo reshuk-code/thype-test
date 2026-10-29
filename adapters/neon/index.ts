@@ -30,8 +30,8 @@ import type { ProviderCredentials } from "@/types/connections";
 /**
  * Neon adapter — serverless Postgres over HTTP.
  *
- * STATUS: implemented, but not yet run against a live Neon project. Test it
- * with a throwaway project before putting a client on it.
+ * STATUS: verified against a live Neon project (Thype, see
+ * docs/DEPLOY-VERCEL-NEON.md).
  *
  * Same table shape as the Supabase adapter (see adapters/neon/schema.sql), so
  * the two are interchangeable and the migration tool can copy between them.

@@ -5,12 +5,21 @@ import { cn } from "@/lib/utils";
 /**
  * An editorial photo in a fixed-ratio box.
  *
- * Site-relative images (the media library) go through `next/image`, which
- * serves resized WebP/AVIF per `sizes`. An absolute URL — a photo an editor
- * pasted from a CDN the project has not allow-listed in `remotePatterns` —
- * falls back to a plain lazy `<img>` rather than failing the page. Either way
- * the box holds its ratio before the image arrives, so nothing shifts.
+ * Media-library images go through `next/image`, which serves resized
+ * WebP/AVIF per `sizes`: site-relative ones (local storage) and those on the
+ * bucket allow-listed in next.config.ts (`NEXT_PUBLIC_MEDIA_ORIGIN`). Any
+ * other absolute URL — a photo an editor pasted from a CDN that is not in
+ * `remotePatterns` — falls back to a plain lazy `<img>` rather than failing
+ * the page. Either way the box holds its ratio before the image arrives, so
+ * nothing shifts.
  */
+const MEDIA_ORIGIN = process.env.NEXT_PUBLIC_MEDIA_ORIGIN ?? "";
+
+function canOptimise(src: string): boolean {
+  if (src.startsWith("/") && !src.startsWith("//")) return true;
+  return MEDIA_ORIGIN !== "" && src.startsWith(`${MEDIA_ORIGIN}/`);
+}
+
 export function CoverImage({
   src,
   alt,
@@ -37,7 +46,7 @@ export function CoverImage({
       style={ratio ? { aspectRatio: ratio } : undefined}
     >
       {src ? (
-        src.startsWith("/") && !src.startsWith("//") ? (
+        canOptimise(src) ? (
           <Image
             src={src}
             alt={alt}

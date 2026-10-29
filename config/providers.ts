@@ -201,10 +201,55 @@ export const STORAGE_PROVIDERS: ProviderDefinition<StorageProviderId>[] = [
   {
     id: "s3",
     kind: "storage",
-    label: "S3 / R2",
-    description: "Not implemented yet — see docs/ROADMAP.md (Phase 4).",
-    status: "unavailable",
-    fields: [],
+    label: "S3-compatible",
+    description:
+      "Neon Object Storage, AWS S3, Cloudflare R2. Verified on Neon; the bucket must allow public reads.",
+    status: "stable",
+    fields: [
+      {
+        name: "endpoint",
+        label: "Endpoint",
+        envVar: "STORAGE_S3_ENDPOINT",
+        help: "Neon: the branch's storage endpoint (Console → Connect → Storage). Leave blank for AWS.",
+      },
+      {
+        name: "region",
+        label: "Region",
+        envVar: "STORAGE_S3_REGION",
+        help: "e.g. ap-southeast-1. R2 uses auto.",
+      },
+      {
+        name: "bucket",
+        label: "Bucket",
+        required: true,
+        envVar: "STORAGE_S3_BUCKET",
+      },
+      {
+        name: "accessKeyId",
+        label: "Access key ID",
+        required: true,
+        envVar: "STORAGE_S3_ACCESS_KEY_ID",
+        help: "Neon: the credential's token_id (nak_live_…).",
+      },
+      {
+        name: "secretAccessKey",
+        label: "Secret access key",
+        required: true,
+        envVar: "STORAGE_S3_SECRET_ACCESS_KEY",
+        help: "Server-side only. Neon: s3_secret_access_key (nsk_live_…).",
+      },
+      {
+        name: "publicUrl",
+        label: "Public URL",
+        envVar: "STORAGE_S3_PUBLIC_URL",
+        help: "Optional CDN or custom domain in front of the bucket. Defaults to endpoint/bucket.",
+      },
+    ],
+    setup: [
+      "Neon: Console → Object storage → New bucket → access level public_read.",
+      "Neon: Settings → Credentials → create one with storage:read and storage:write.",
+      "Full walkthrough: docs/DEPLOY-VERCEL-NEON.md.",
+    ],
   },
 ];
 

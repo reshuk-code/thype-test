@@ -236,6 +236,10 @@ two things:
 - `CMS_STORAGE=local` writes to the filesystem, which is ephemeral there.
   Uploads will vanish. Use `supabase` or `s3`.
 
+The full Vercel + Neon (Postgres and Object Storage) walkthrough, including
+moving local content across with `npm run cms:migrate`, is
+[`docs/DEPLOY-VERCEL-NEON.md`](docs/DEPLOY-VERCEL-NEON.md).
+
 ---
 
 ## Commands
@@ -250,6 +254,8 @@ two things:
 | `npm run cms:secret` | Generates a value for `CMS_SESSION_SECRET`. |
 | `npm run cms:seed` | Fills the local adapter with a demo site. Asks first. |
 | `npm run cms:reset` | Wipes `.cms-data/`. Local adapter only. Irreversible. |
+| `npm run cms:migrate` | Copies local records and `public/uploads/` files into the backend set in `.env.local`, rewriting media URLs. `-- --dry-run` first. |
+| `npm test` | Unit tests (`node:test`, no framework). |
 | `node scripts/test-docker.mjs` | Smoke-tests a built image in a throwaway Docker stack. |
 
 ---
@@ -260,6 +266,8 @@ two things:
 |---|---|
 | [`docs/BUILDING-A-SITE.md`](docs/BUILDING-A-SITE.md) | You are building a client website on top of this. Start here. |
 | [`docs/XCLOUD_DOCKER.md`](docs/XCLOUD_DOCKER.md) | You are putting a site on a VPS, deploying an update, or restoring a backup. |
+| [`docs/DEPLOY-VERCEL-NEON.md`](docs/DEPLOY-VERCEL-NEON.md) | You are deploying on Vercel with Neon Postgres and Neon Object Storage (how Thype is hosted). |
+| [`docs/thype.md`](docs/thype.md) | You are working on the Thype magazine: what changed from the template, design decisions, open items. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | You are changing the CMS itself, or need to know why something is the way it is. |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | You need to know what is built, what is not, and what was left out deliberately. |
 | [`CLAUDE.md`](CLAUDE.md) | You are an AI assistant working in this repository — or a developer who wants the rules in one page. |
@@ -273,8 +281,9 @@ so is Phase 2's content half: the media library, blog, destinations, tour
 packages, activities, testimonials, FAQs and enquiries. What remains in Phase 2
 is entity links in the menu editor.
 
-There is no unit test suite yet; `scripts/test-docker.mjs` covers the Docker
-image end to end. The first unit tests worth writing are listed in the roadmap.
+`npm test` runs the unit tests in `tests/` (blog logic, repositories against a
+temporary local store, storage keys); `scripts/test-docker.mjs` covers the
+Docker image end to end.
 
 ---
 
